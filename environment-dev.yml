@@ -1,0 +1,16 @@
+name: sparrow-ipc
+channels:
+  - conda-forge
+dependencies:
+  # Build dependencies
+  - cmake
+  - ninja
+  - cxx-compiler
+  # Libraries dependencies
+  - nlohmann_json
+  - sparrow-devel
+  # Testing dependencies
+  - doctest
+  # Documentation dependencies
+  - doxygen
+  - graphviz

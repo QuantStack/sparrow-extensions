@@ -1,0 +1,22 @@
+# sparrow-extensions cmake module
+# This module sets the following variables in your project::
+#
+#   sparrow-extensions_FOUND - true if sparrow-extensions found on the system
+#   sparrow-extensions_INCLUDE_DIRS - the directory containing sparrow-extensions headers
+#   sparrow-extensions_LIBRARY - the location of the sparrow-extensions library (or empty if not applicable)
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+if("@CREATE_JSON_READER_TARGET@")
+    find_dependency(nlohmann_json)
+endif()
+
+find_dependency(sparrow)
+
+if(NOT TARGET sparrow::sparrow-extensions)
+    include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+    get_target_property(@PROJECT_NAME@_INCLUDE_DIRS sparrow::sparrow-extensions INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(@PROJECT_NAME@_LIBRARY sparrow::sparrow-extensions LOCATION)
+endif()
