@@ -1,0 +1,166 @@
+name: Linux
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.job }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash -e -l {0}
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+        version: [11, 12, 13, 14, 17, 18, 19, 20]
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        arch: [64]
+        config: [Debug, RelWithDebInfo]
+        date-polyfill: [ON, OFF]
+        shared: [ON, OFF]
+        cpp_standard: [20]
+        exclude:
+          - compiler: clang
+            version: 11
+          - compiler: clang
+            version: 12
+          - compiler: clang
+            version: 13
+          - compiler: clang
+            version: 14
+          - compiler: gcc
+            version: 17
+          - compiler: gcc
+            version: 18
+          - compiler: gcc
+            version: 19
+          - compiler: gcc
+            version: 20
+          - compiler: gcc
+            version: 11
+            date-polyfill: OFF
+          - compiler: gcc
+            version: 12
+            date-polyfill: OFF
+        include:
+          - compiler: gcc
+            version: 13
+            os: ubuntu-24.04
+            arch: 32
+            config: Release
+            date-polyfill: OFF
+            shared: OFF
+            cpp_standard: 20
+          - compiler: gcc
+            version: 14
+            os: ubuntu-24.04
+            arch: 64
+            config: Release
+            date-polyfill: OFF
+            shared: OFF
+            cpp_standard: 23
+          - compiler: clang
+            version: 20
+            os: ubuntu-24.04
+            arch: 64
+            config: Release
+            date-polyfill: OFF
+            shared: OFF
+            cpp_standard: 23
+           
+    runs-on: ${{ matrix.os }}
+    name: ${{matrix.os}} / ${{ matrix.compiler }} / ${{ matrix.version }} / ${{ matrix.arch }} / ${{ matrix.config }} / date-polyfill ${{ matrix.date-polyfill}} / shared ${{ matrix.shared }} / cpp${{ matrix.cpp_standard }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+ 
+    steps:
+
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
+    - name: Install pthread
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpthread-stubs0-dev libboost-thread-dev
+
+    - uses: rui314/setup-mold@v1
+      with:
+        mold-version: 2.40.1
+        make-default: true
+
+    - name: Install GCC
+      if: matrix.compiler == 'gcc'
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: ${{matrix.version}}
+        platform: x64
+
+    - name: Install LLVM and Clang
+      if: matrix.compiler == 'clang'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{matrix.version}}
+        sudo apt-get install -y clang-tools-${{matrix.version}} 
+        sudo update-alternatives --install /usr/bin/clang++				    clang++					    /usr/bin/clang++-${{matrix.version}} 200
+        sudo update-alternatives --install /usr/bin/clang					    clang					      /usr/bin/clang-${{matrix.version}} 200
+        sudo update-alternatives --install /usr/bin/clang-scan-deps   clang-scan-deps     /usr/bin/clang-scan-deps-${{matrix.version}} 200 
+        sudo update-alternatives --set clang /usr/bin/clang-${{matrix.version}}
+        sudo update-alternatives --set clang++ /usr/bin/clang++-${{matrix.version}}
+        sudo update-alternatives --set clang-scan-deps /usr/bin/clang-scan-deps-${{matrix.version}}
+
+    - name: Install 32bit support
+      if: matrix.arch == '32'
+      run: sudo apt-get install gcc-multilib g++-multilib
+
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set conda environment
+      uses: mamba-org/setup-micromamba@main
+      with:
+        environment-name: myenv
+        environment-file: environment-dev.yml
+        init-shell: bash
+        cache-downloads: true
+
+    - name: Configure using CMake
+      run: |
+        if [[ "${{matrix.arch}}" = 32 ]]; then export CXXFLAGS=-m32 ; export CFLAGS=-m32; fi
+        if [[ "${{matrix.compiler}}" = "gcc" ]]; then export CC=gcc-${{matrix.version}}; export CXX=g++-${{matrix.version}}; else export CC=clang; export CXX=clang++; fi
+        cmake -G Ninja \
+          -Bbuild \
+          -DCMAKE_BUILD_TYPE:STRING=${{matrix.config}} \
+          -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+          -DCMAKE_CXX_STANDARD=${{matrix.cpp_standard}} \
+          -DBUILD_TESTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+          -DFETCH_DEPENDENCIES_WITH_CMAKE=MISSING \
+          -DSPARROW_EXTENSIONS_BUILD_SHARED=${{matrix.shared}} \
+          -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold" \
+          -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold"
+
+    - name: Build library
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config}} --target sparrow_extensions --parallel 8
+
+    - name: Build tests
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config}} --target test_sparrow_extensions --parallel 8
+    - name: Run tests
+      working-directory: build
+      run: |
+        cmake --build . --config ${{matrix.config}} --target run_tests
+
+    - name: Install
+      working-directory: build
+      run: cmake --install . --config ${{matrix.config}}
+
+    - name: Run sccache stat for check
+      shell: bash
+      run: ${SCCACHE_PATH} --show-stats
