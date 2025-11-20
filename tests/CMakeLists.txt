@@ -20,7 +20,7 @@ set(MAKE_EXECUTABLE_ENABLE_EXPORTS TRUE)
 enable_testing()
 
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    project(sparrow-test CXX)
+    project(sparrow_extensions-test CXX)
     find_package(sparrow REQUIRED CONFIG)
     set(SPARROW_INCLUDE_DIR ${sparrow_INCLUDE_DIRS})
 endif()
@@ -32,13 +32,13 @@ else()
     message(STATUS "Tests build type is ${CMAKE_BUILD_TYPE}")
 endif()
   
-set(SPARROW_TESTS_SOURCES
+set(SPARROW_EXTENSIONS_TESTS_SOURCES
     main.cpp
     test_uuid_array.cpp
 )
 
 set(test_target "test_sparrow_extensions_lib")
-add_executable(${test_target} ${SPARROW_TESTS_SOURCES})
+add_executable(${test_target} ${SPARROW_EXTENSIONS_TESTS_SOURCES})
 
 if(EMSCRIPTEN)
     target_compile_options(${test_target}
@@ -104,9 +104,5 @@ else()
         USES_TERMINAL
     )
 
-    set_target_properties(run_tests PROPERTIES FOLDER "Tests utilities")
-
-    set(JUNIT_REPORT_FILE_DOCTEST ${CMAKE_CURRENT_BINARY_DIR}/test_sparrow_lib_report_doctest.xml)
-
-    set_target_properties(run_tests_with_junit_report PROPERTIES FOLDER "Tests utilities")
+    set_target_properties(run_sparrow_extensions_tests PROPERTIES FOLDER "Tests utilities")
 endif()

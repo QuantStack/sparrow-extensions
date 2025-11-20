@@ -70,8 +70,8 @@ endfunction()
 set(SPARROW_BUILD_SHARED ${SPARROW_IPC_BUILD_SHARED})
 find_package_or_fetch(
     PACKAGE_NAME sparrow
-    GIT_REPOSITORY https://github.com/Alex-PLACET/sparrow.git
-    TAG array_registry_for_dispatch_and_factory
+    GIT_REPOSITORY https://github.com/man-group/sparrow.git
+    TAG main
 )
 
 if(NOT TARGET sparrow::sparrow)
