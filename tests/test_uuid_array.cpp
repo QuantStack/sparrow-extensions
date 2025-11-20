@@ -43,7 +43,7 @@ namespace sparrow_extensions
             -> std::pair<uuid_array, std::vector<std::array<sparrow::byte_t, 16>>>
         {
             std::vector<std::array<sparrow::byte_t, 16>> input_values;
-            input_values.reserve(count);
+            input_values.reserve(count - offset);
             for (size_t i = offset; i < count; ++i)  // Start from offset
             {
                 input_values.push_back(make_test_uuid(static_cast<uint8_t>(i * 16)));

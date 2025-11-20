@@ -98,7 +98,6 @@ option(USE_DATE_POLYFILL "Use date polyfill implementation" ON)
 message(STATUS "🔧 Use date polyfill: ${USE_DATE_POLYFILL}")
 option(ENABLE_INTEGRATION_TEST "Enable integration tests" OFF)
 message(STATUS "🔧 Enable integration tests: ${ENABLE_INTEGRATION_TEST}")
-option(ENABLE_INTEGRATION_TEST "Creates json_reader target and enable integration tests" OFF)
 option(CREATE_JSON_READER_TARGET "Create json_reader target, automatically set when ENABLE_INTEGRATION_TEST is ON" OFF)
 
 if(ENABLE_INTEGRATION_TEST)

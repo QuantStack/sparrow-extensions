@@ -78,6 +78,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "C
     endif()
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11.3)
-        set(compile_options ${compile_optoins} PRIVATE "-Wno-error=shift-negative-value")
+        set(compile_options ${compile_options} PRIVATE "-Wno-error=shift-negative-value")
     endif()
 endif()

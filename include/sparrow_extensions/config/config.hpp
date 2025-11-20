@@ -43,7 +43,7 @@
     return static_cast<bool>(COMPILING_WITH_APPLE_CLANG);
 }
 
-// If using gcc versionn < 12, we define the constexpr keyword to be empty.
+// If using gcc version < 12, we define the constexpr keyword to be empty.
 #if defined(__GNUC__) && __GNUC__ < 12
 #    define SPARROW_EXTENSIONS_CONSTEXPR_GCC_11 inline
 #else

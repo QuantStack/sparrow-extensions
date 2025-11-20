@@ -100,7 +100,7 @@ else()
         COMMAND ${test_target}
         DEPENDS 
             ${test_target}
-        COMMENT "Running tests for Doctest and Catch2"
+        COMMENT "Running tests for Doctest"
         USES_TERMINAL
     )
 

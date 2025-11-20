@@ -147,15 +147,15 @@ jobs:
 
     - name: Build library
       working-directory: build
-      run: cmake --build . --config ${{matrix.config}} --target sparrow_extensions --parallel 8
+      run: cmake --build . --config ${{matrix.config}} --target sparrow-extensions --parallel 8
 
     - name: Build tests
       working-directory: build
-      run: cmake --build . --config ${{matrix.config}} --target test_sparrow_extensions --parallel 8
+      run: cmake --build . --config ${{matrix.config}} --target test_sparrow_extensions_lib --parallel 8
     - name: Run tests
       working-directory: build
       run: |
-        cmake --build . --config ${{matrix.config}} --target run_tests
+        cmake --build . --config ${{matrix.config}} --target run_sparrow_extensions_tests
 
     - name: Install
       working-directory: build
