@@ -301,12 +301,12 @@ export(EXPORT ${PROJECT_NAME}-targets
     NAMESPACE sparrow-extensions::)
 
 # Install headers
-install(DIRECTORY ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow-extensions
+install(DIRECTORY ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     PATTERN ".clang-*" EXCLUDE
     PATTERN "README.md" EXCLUDE)
 
-install(FILES ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow-extensions.hpp
+install(FILES ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Install CMake configuration files
