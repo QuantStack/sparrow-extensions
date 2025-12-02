@@ -19,7 +19,7 @@ cd build
 cmake .. \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
-    -DBUILD_TESTS=ON
+    -DSPARROW_EXTENSIONS_BUILD_TESTS=ON
 make install
 ```
 

@@ -86,8 +86,8 @@ message(STATUS "sparrow-extensions binary version: v${SPARROW_EXTENSIONS_BINARY_
 
 # Build options
 # =============
-option(BUILD_TESTS "Build sparrow-extensions test suite" OFF)
-message(STATUS "🔧 Build tests: ${BUILD_TESTS}")
+option(SPARROW_EXTENSIONS_BUILD_TESTS "Build sparrow-extensions test suite" OFF)
+message(STATUS "🔧 Build tests: ${SPARROW_EXTENSIONS_BUILD_TESTS}")
 option(BUILD_BENCHMARKS "Build sparrow-extensions benchmark suite" OFF)
 message(STATUS "🔧 Build benchmarks: ${BUILD_BENCHMARKS}")
 option(BUILD_DOCS "Build sparrow-extensions documentation" OFF)
@@ -266,7 +266,7 @@ if(ENABLE_INTEGRATION_TEST)
     add_subdirectory(c_data_integration_tests)
 endif()
 
-if(BUILD_TESTS)
+if(SPARROW_EXTENSIONS_BUILD_TESTS)
     message(STATUS "🧪 Create tests targets")
     enable_testing()
     add_subdirectory(tests)

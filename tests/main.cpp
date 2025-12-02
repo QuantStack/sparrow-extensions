@@ -17,7 +17,9 @@
 
 #include <sparrow_extensions/config/sparrow_extensions_version.hpp>
 
+#ifdef HAS_BETTER_JUNIT_REPORTER
 #include "better_junit_reporter.hpp"
+#endif
 
 TEST_CASE("versions are readable")
 {

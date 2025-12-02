@@ -64,12 +64,25 @@ if(EMSCRIPTEN)
         PUBLIC "SHELL: --preload-file ${SYSROOT_PATH}/include@/include"
     )
 else()
+    set(TEST_LINK_LIBRARIES
+        sparrow-extensions
+        doctest::doctest
+    )
+
+    if(TARGET better_junit_reporter)
+        list(APPEND TEST_LINK_LIBRARIES better_junit_reporter)
+        set(HAS_BETTER_JUNIT_REPORTER TRUE)
+    else()
+        set(HAS_BETTER_JUNIT_REPORTER FALSE)
+    endif()
+
     target_link_libraries(${test_target}
         PUBLIC
-            sparrow-extensions
-            doctest::doctest
-            better_junit_reporter
-            $<$<BOOL:USE_SANITIZER>:${SANITIZER_LINK_LIBRARIES}>)
+            ${TEST_LINK_LIBRARIES})
+
+    target_compile_definitions(${test_target}
+        PRIVATE
+            $<$<BOOL:${HAS_BETTER_JUNIT_REPORTER}>:HAS_BETTER_JUNIT_REPORTER>)
 
     include(compile_options)
 
