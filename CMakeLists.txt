@@ -201,16 +201,14 @@ endif()
 
 add_library(sparrow-extensions ${SPARROW_EXTENSIONS_LIBRARY_TYPE} ${SPARROW_EXTENSIONS_SRC} ${SPARROW_EXTENSIONS_HEADERS})
 
+# Set linker language explicitly since there may be no source files yet
+set_target_properties(sparrow-extensions PROPERTIES LINKER_LANGUAGE CXX)
+
 target_compile_definitions(sparrow-extensions PUBLIC ${SPARROW_EXTENSIONS_COMPILE_DEFINITIONS})
 
 set_property(TARGET sparrow-extensions PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if(UNIX)
-    # CMake does not compute the version number of so files as libtool
-    # does on Linux. Strictly speaking, we should exclude FreeBSD and
-    # Apple from this, but that would require having different version
-    # numbers depending on the platform. We prefer to follow the
-    # libtool pattern everywhere.
     math(EXPR SPARROW_EXTENSIONS_BINARY_COMPATIBLE "${SPARROW_EXTENSIONS_BINARY_CURRENT} - ${SPARROW_EXTENSIONS_BINARY_AGE}")
     set_target_properties(
         sparrow-extensions
@@ -233,7 +231,6 @@ target_include_directories(sparrow-extensions PUBLIC
     $<BUILD_INTERFACE:${SPARROW_EXTENSIONS_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>)
 
-# We do not use non-standard C++
 set_target_properties(sparrow-extensions PROPERTIES CMAKE_CXX_EXTENSIONS OFF)
 target_compile_features(sparrow-extensions PUBLIC cxx_std_20)
 target_link_libraries(sparrow-extensions PUBLIC sparrow::sparrow ${SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES})
