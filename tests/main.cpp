@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <string>
 
 #include <sparrow_extensions/config/sparrow_extensions_version.hpp>
