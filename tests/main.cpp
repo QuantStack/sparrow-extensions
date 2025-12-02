@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <doctest/doctest.h>
+
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <string>
 
