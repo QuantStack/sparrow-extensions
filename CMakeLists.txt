@@ -90,8 +90,8 @@ option(SPARROW_EXTENSIONS_BUILD_TESTS "Build sparrow-extensions test suite" OFF)
 message(STATUS "🔧 Build tests: ${SPARROW_EXTENSIONS_BUILD_TESTS}")
 option(BUILD_BENCHMARKS "Build sparrow-extensions benchmark suite" OFF)
 message(STATUS "🔧 Build benchmarks: ${BUILD_BENCHMARKS}")
-option(BUILD_DOCS "Build sparrow-extensions documentation" OFF)
-message(STATUS "🔧 Build docs: ${BUILD_DOCS}")
+option(SPARROW_EXTENSIONS_BUILD_DOCS "Build sparrow-extensions documentation" OFF)
+message(STATUS "🔧 Build docs: ${SPARROW_EXTENSIONS_BUILD_DOCS}")
 option(BUILD_EXAMPLES "Build sparrow-extensions examples" OFF)
 message(STATUS "🔧 Build examples: ${BUILD_EXAMPLES}")
 option(USE_DATE_POLYFILL "Use date polyfill implementation" ON)
@@ -274,7 +274,7 @@ endif()
 
 # Docs
 # ====
-if(BUILD_DOCS)
+if(SPARROW_EXTENSIONS_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
 
