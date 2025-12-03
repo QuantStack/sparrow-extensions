@@ -11,7 +11,26 @@
 // limitations under the License.
 
 // Minimal translation unit for Windows DLL linking.
-// Header-only libraries require at least one compiled source file
-// when built as a shared library on Windows.
+// Header-only libraries require at least one exported symbol
+// when built as a shared library on Windows to generate the import library.
 
 #include "sparrow_extensions/config/config.hpp"
+#include "sparrow_extensions/config/sparrow_extensions_version.hpp"
+
+namespace sparrow_extensions
+{
+    SPARROW_EXTENSIONS_API int version_major() noexcept
+    {
+        return SPARROW_EXTENSIONS_VERSION_MAJOR;
+    }
+
+    SPARROW_EXTENSIONS_API int version_minor() noexcept
+    {
+        return SPARROW_EXTENSIONS_VERSION_MINOR;
+    }
+
+    SPARROW_EXTENSIONS_API int version_patch() noexcept
+    {
+        return SPARROW_EXTENSIONS_VERSION_PATCH;
+    }
+}
