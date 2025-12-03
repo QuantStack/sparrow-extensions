@@ -187,7 +187,7 @@ set(SPARROW_EXTENSIONS_HEADERS
 )
 
 set(SPARROW_EXTENSIONS_SRC
-    # ${SPARROW_EXTENSIONS_SOURCE_DIR}/uuid_array.cpp
+    ${SPARROW_EXTENSIONS_SOURCE_DIR}/sparrow_extensions.cpp
 )
 
 option(SPARROW_EXTENSIONS_BUILD_SHARED "Build sparrow-extensions as a shared library" ON)
