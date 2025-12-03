@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include "sparrow/layout/array_registry.hpp"
 #include "sparrow/utils/extension.hpp"
 #include "sparrow/variable_size_binary_array.hpp"
 #include "sparrow/variable_size_binary_view_array.hpp"
+#include "sparrow/utils/extension.hpp"
 
 namespace sparrow
 {
@@ -121,4 +123,52 @@ namespace sparrow
             }
         };
     }
+
+    namespace detail
+    {
+        inline const bool json_arrays_registered = []()
+        {
+            auto& registry = array_registry::instance();
+
+            constexpr std::string_view extension_name = "arrow.json";
+
+            // Register json_array (STRING base type)
+            registry.register_extension(
+                data_type::STRING,
+                extension_name,
+                [](arrow_proxy proxy)
+                {
+                    return cloning_ptr<array_wrapper>{
+                        new array_wrapper_impl<json_array>(json_array(std::move(proxy)))
+                    };
+                }
+            );
+
+            // Register big_json_array (LARGE_STRING base type)
+            registry.register_extension(
+                data_type::LARGE_STRING,
+                extension_name,
+                [](arrow_proxy proxy)
+                {
+                    return cloning_ptr<array_wrapper>{
+                        new array_wrapper_impl<big_json_array>(big_json_array(std::move(proxy)))
+                    };
+                }
+            );
+
+            // Register json_view_array (STRING_VIEW base type)
+            registry.register_extension(
+                data_type::STRING_VIEW,
+                extension_name,
+                [](arrow_proxy proxy)
+                {
+                    return cloning_ptr<array_wrapper>{
+                        new array_wrapper_impl<json_view_array>(json_view_array(std::move(proxy)))
+                    };
+                }
+            );
+
+            return true;
+        }();
+    }  // namespace detail
 }

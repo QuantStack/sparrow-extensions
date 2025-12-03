@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "sparrow/array.hpp"
+#include "sparrow/layout/array_access.hpp"
 #include "sparrow_extensions/json_array.hpp"
 #include "sparrow/layout/array_registry.hpp"
 #include "sparrow/types/data_type.hpp"
@@ -319,6 +320,73 @@ namespace sparrow
             {
                 using dt = detail::get_data_type_from_array<json_view_array>;
                 CHECK_EQ(dt::get(), data_type::STRING_VIEW);
+            }
+        }
+
+        TEST_CASE("extension auto-registration")
+        {
+            auto& registry = array_registry::instance();
+
+            SUBCASE("json_array is registered for STRING with arrow.json extension")
+            {
+                // Create a json_array
+                std::vector<std::string> json_values = {R"({"test": true})", R"({"another": false})"};
+                json_array original_arr(json_values);
+
+                // Create a wrapper from the array
+                auto wrapper = std::make_unique<array_wrapper_impl<json_array>>(std::move(original_arr));
+
+                // Verify dispatch works (this tests that the extension is properly registered)
+                auto size = registry.dispatch(
+                    [](auto&& typed_array)
+                    {
+                        return typed_array.size();
+                    },
+                    *wrapper
+                );
+                CHECK_EQ(size, 2);
+            }
+
+            SUBCASE("big_json_array is registered for LARGE_STRING with arrow.json extension")
+            {
+                std::vector<std::string> json_values = {R"({"large": "data"})"};
+                big_json_array original_arr(json_values);
+
+                auto wrapper = std::make_unique<array_wrapper_impl<big_json_array>>(std::move(original_arr));
+
+                auto size = registry.dispatch(
+                    [](auto&& typed_array)
+                    {
+                        return typed_array.size();
+                    },
+                    *wrapper
+                );
+                CHECK_EQ(size, 1);
+            }
+
+            SUBCASE("registry.create works with json extension metadata")
+            {
+                // Create a json_array and get a copy of its proxy
+                std::vector<std::string> json_values = {R"({"test": true})"};
+                json_array original_arr(json_values);
+
+                // Create wrapper to access the proxy
+                auto temp_wrapper = std::make_unique<array_wrapper_impl<json_array>>(std::move(original_arr));
+                arrow_proxy proxy_copy(temp_wrapper->get_arrow_proxy());
+
+                // Use registry.create to verify the extension is registered
+                auto created_wrapper = registry.create(std::move(proxy_copy));
+                REQUIRE(created_wrapper != nullptr);
+
+                // Verify size via dispatch
+                auto size = registry.dispatch(
+                    [](auto&& typed_array)
+                    {
+                        return typed_array.size();
+                    },
+                    *created_wrapper
+                );
+                CHECK_EQ(size, 1);
             }
         }
 

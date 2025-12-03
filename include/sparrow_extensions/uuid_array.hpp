@@ -18,6 +18,7 @@
 #include <string_view>
 
 #include "sparrow/fixed_width_binary_array.hpp"
+#include "sparrow/layout/array_registry.hpp"
 #include "sparrow/utils/contracts.hpp"
 
 namespace sparrow_extensions
@@ -83,6 +84,27 @@ namespace sparrow_extensions
         sparrow::fixed_width_binary_traits::value_type,
         sparrow::fixed_width_binary_traits::const_reference,
         uuid_extension>;
+
+    namespace detail
+    {
+        inline const bool uuid_array_registered = []()
+        {
+            auto& registry = sparrow::array_registry::instance();
+
+            registry.register_extension(
+                sparrow::data_type::FIXED_WIDTH_BINARY,
+                "arrow.uuid",
+                [](sparrow::arrow_proxy proxy)
+                {
+                    return sparrow::cloning_ptr<sparrow::array_wrapper>{
+                        new sparrow::array_wrapper_impl<uuid_array>(uuid_array(std::move(proxy)))
+                    };
+                }
+            );
+
+            return true;
+        }();
+    }  // namespace detail
 }  // namespace sparrow_extensions
 
 namespace sparrow::detail
