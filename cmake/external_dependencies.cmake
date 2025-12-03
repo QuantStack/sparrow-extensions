@@ -84,4 +84,9 @@ if(SPARROW_EXTENSIONS_BUILD_TESTS)
         GIT_REPOSITORY https://github.com/doctest/doctest.git
         TAG v2.4.12
     )
+
+    # better_junit_reporter is provided by sparrow
+    if(NOT TARGET better_junit_reporter)
+        message(STATUS "📦 better_junit_reporter target provided by sparrow")
+    endif()
 endif()

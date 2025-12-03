@@ -86,12 +86,12 @@ message(STATUS "sparrow-extensions binary version: v${SPARROW_EXTENSIONS_BINARY_
 
 # Build options
 # =============
-option(BUILD_TESTS "Build sparrow-extensions test suite" OFF)
-message(STATUS "🔧 Build tests: ${BUILD_TESTS}")
+option(SPARROW_EXTENSIONS_BUILD_TESTS "Build sparrow-extensions test suite" OFF)
+message(STATUS "🔧 Build tests: ${SPARROW_EXTENSIONS_BUILD_TESTS}")
 option(BUILD_BENCHMARKS "Build sparrow-extensions benchmark suite" OFF)
 message(STATUS "🔧 Build benchmarks: ${BUILD_BENCHMARKS}")
-option(BUILD_DOCS "Build sparrow-extensions documentation" OFF)
-message(STATUS "🔧 Build docs: ${BUILD_DOCS}")
+option(SPARROW_EXTENSIONS_BUILD_DOCS "Build sparrow-extensions documentation" OFF)
+message(STATUS "🔧 Build docs: ${SPARROW_EXTENSIONS_BUILD_DOCS}")
 option(BUILD_EXAMPLES "Build sparrow-extensions examples" OFF)
 message(STATUS "🔧 Build examples: ${BUILD_EXAMPLES}")
 option(USE_DATE_POLYFILL "Use date polyfill implementation" ON)
@@ -201,6 +201,9 @@ endif()
 
 add_library(sparrow-extensions ${SPARROW_EXTENSIONS_LIBRARY_TYPE} ${SPARROW_EXTENSIONS_SRC} ${SPARROW_EXTENSIONS_HEADERS})
 
+# Set linker language explicitly since there may be no source files yet
+set_target_properties(sparrow-extensions PROPERTIES LINKER_LANGUAGE CXX)
+
 target_compile_definitions(sparrow-extensions PUBLIC ${SPARROW_EXTENSIONS_COMPILE_DEFINITIONS})
 
 set_property(TARGET sparrow-extensions PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -233,7 +236,6 @@ target_include_directories(sparrow-extensions PUBLIC
     $<BUILD_INTERFACE:${SPARROW_EXTENSIONS_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>)
 
-# We do not use non-standard C++
 set_target_properties(sparrow-extensions PROPERTIES CMAKE_CXX_EXTENSIONS OFF)
 target_compile_features(sparrow-extensions PUBLIC cxx_std_20)
 target_link_libraries(sparrow-extensions PUBLIC sparrow::sparrow ${SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES})
@@ -269,7 +271,7 @@ if(ENABLE_INTEGRATION_TEST)
     add_subdirectory(c_data_integration_tests)
 endif()
 
-if(BUILD_TESTS)
+if(SPARROW_EXTENSIONS_BUILD_TESTS)
     message(STATUS "🧪 Create tests targets")
     enable_testing()
     add_subdirectory(tests)
@@ -277,7 +279,7 @@ endif()
 
 # Docs
 # ====
-if(BUILD_DOCS)
+if(SPARROW_EXTENSIONS_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
 
@@ -304,12 +306,12 @@ export(EXPORT ${PROJECT_NAME}-targets
     NAMESPACE sparrow-extensions::)
 
 # Install headers
-install(DIRECTORY ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow-extensions
+install(DIRECTORY ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     PATTERN ".clang-*" EXCLUDE
     PATTERN "README.md" EXCLUDE)
 
-install(FILES ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow-extensions.hpp
+install(FILES ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Install CMake configuration files
