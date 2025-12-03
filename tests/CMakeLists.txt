@@ -70,6 +70,7 @@ else()
     set(TEST_LINK_LIBRARIES
         sparrow-extensions
         doctest::doctest
+        $<$<BOOL:USE_SANITIZER>:${SANITIZER_LINK_LIBRARIES}>
     )
 
     if(TARGET better_junit_reporter)
