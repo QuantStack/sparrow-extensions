@@ -119,6 +119,10 @@ if(ENABLE_COVERAGE)
     include(code_coverage)
 endif()
 
+# Sanitizers
+# ==========
+include(sanitizers)
+
 include(CheckCXXSymbolExists)
 
 if(cxx_std_20 IN_LIST CMAKE_CXX_COMPILE_FEATURES)

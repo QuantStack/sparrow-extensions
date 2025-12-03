@@ -1,0 +1,108 @@
+name: Sanitizers
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.job }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash -e -l {0}
+jobs:
+  build:
+    runs-on: ${{ matrix.sys.image }}
+    name: sanitizer / ${{ matrix.sys.compiler }} / ${{ matrix.sys.version }} / ${{ matrix.config.name }} / shared ${{ matrix.sys.shared }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        sys:
+        - {image: ubuntu-24.04, compiler: clang, version: '20', config-flags: '', shared: 'ON'}
+
+        config:
+        - {name: Debug}
+
+    steps:
+
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
+    - name: Install LLVM and Clang
+      if: matrix.sys.compiler == 'clang'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{matrix.sys.version}}
+        sudo apt-get install -y clang-tools-${{matrix.sys.version}} 
+        sudo update-alternatives --install /usr/bin/clang++         clang++         /usr/bin/clang++-${{matrix.sys.version}} 200
+        sudo update-alternatives --install /usr/bin/clang           clang           /usr/bin/clang-${{matrix.sys.version}} 200
+        sudo update-alternatives --install /usr/bin/clang-scan-deps clang-scan-deps /usr/bin/clang-scan-deps-${{matrix.sys.version}} 200 
+        sudo update-alternatives --set clang /usr/bin/clang-${{matrix.sys.version}}
+        sudo update-alternatives --set clang++ /usr/bin/clang++-${{matrix.sys.version}}
+        sudo update-alternatives --set clang-scan-deps /usr/bin/clang-scan-deps-${{matrix.sys.version}}
+
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set conda environment
+      uses: mamba-org/setup-micromamba@main
+      with:
+        environment-name: myenv
+        environment-file: environment-dev.yml
+        init-shell: bash
+        cache-downloads: true
+
+    - name: Configure using CMake
+      run: |
+        if [[ "${{matrix.compiler}}" = "gcc" ]]; then export CC=gcc-${{matrix.sys.version}}; export CXX=g++-${{matrix.sys.version}}; else export CC=clang; export CXX=clang++; fi
+        cmake -G Ninja \
+          -Bbuild ${{matrix.sys.config-flags}} \
+          -DCMAKE_BUILD_TYPE:STRING=${{matrix.config.name}} \
+          -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+          -DSPARROW_EXTENSIONS_BUILD_TESTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+          -DFETCH_DEPENDENCIES_WITH_CMAKE=MISSING \
+          -DSPARROW_EXTENSIONS_BUILD_SHARED=${{matrix.sys.shared}} \
+          -DUSE_SANITIZER=address
+
+    - name: Build library
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config.name}} --target sparrow-extensions --parallel 8
+
+    - name: Install
+      working-directory: build
+      run: cmake --install . --config ${{matrix.config.name}}
+
+    - name: Build tests
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config.name}} --target test_sparrow_extensions_lib --parallel 8
+
+    - name: Run sccache stat for check
+      shell: bash
+      run: ${SCCACHE_PATH} --show-stats
+
+    - name: Run tests
+      working-directory: build
+      run: | 
+        export ASAN_OPTIONS=log_path=asan_log_:alloc_dealloc_mismatch=0:halt_on_error=0:handle_abort=0
+        cmake --build . --config ${{matrix.config.name}} --target run_sparrow_extensions_tests
+      
+    - name: Upload ASAN log
+      if: always()
+      uses: actions/upload-artifact@v5
+      with:
+        name: asan-log-${{ matrix.sys.compiler }}-${{ matrix.sys.version }}-${{ matrix.config.name }}
+        path: '**/asan_log_*'
+        if-no-files-found: ignore
+        
+    - name: Return errors if ASAN log content is not empty
+      if: always()
+      run: |
+        if [ -s build/tests/asan_log_* ]; then
+          echo "ASAN detected errors. See the log for details."
+          exit 1
+        fi
