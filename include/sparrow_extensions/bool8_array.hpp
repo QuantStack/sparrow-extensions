@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "sparrow/layout/array_registry.hpp"
 #include "sparrow/primitive_array.hpp"
 #include "sparrow/utils/extension.hpp"
 
@@ -40,23 +39,8 @@ namespace sparrow
 
     namespace detail
     {
-        inline const bool bool8_array_registered = []()
-        {
-            auto& registry = array_registry::instance();
-
-            registry.register_extension(
-                data_type::INT8,
-                "arrow.bool8",
-                [](arrow_proxy proxy)
-                {
-                    return cloning_ptr<array_wrapper>{
-                        new array_wrapper_impl<bool8_array>(bool8_array(std::move(proxy)))
-                    };
-                }
-            );
-
-            return true;
-        }();
+        // Registration is defined in bool8_array.cpp
+        extern const bool bool8_array_registered;
     }  // namespace detail
 }
 
