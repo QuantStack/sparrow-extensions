@@ -14,7 +14,9 @@
 
 #include "sparrow_extensions/json_array.hpp"
 
-#include "sparrow/layout/array_registry.hpp"
+#include <sparrow/layout/array_registry.hpp>
+
+#include "sparrow_extensions/config/config.hpp"
 
 #include "sparrow_extensions/config/config.hpp"
 
