@@ -22,7 +22,9 @@
 #include "metadata_sample.hpp"
 #include "sparrow_extensions/bool8_array.hpp"
 
-namespace sparrow
+using namespace sparrow;
+
+namespace sparrow_extensions
 {
     TEST_SUITE("bool8_array")
     {

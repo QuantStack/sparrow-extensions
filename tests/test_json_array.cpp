@@ -24,7 +24,9 @@
 #include "doctest/doctest.h"
 #include "sparrow_extensions/json_array.hpp"
 
-namespace sparrow
+using namespace sparrow;
+
+namespace sparrow_extensions
 {
     TEST_SUITE("json_array")
     {
