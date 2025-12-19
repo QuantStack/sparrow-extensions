@@ -58,7 +58,7 @@ file(STRINGS "${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/config/sparro
 
 foreach(ver ${sparrow_extensions_version_defines})
     if(ver MATCHES "constexpr int SPARROW_EXTENSIONS_VERSION_(MAJOR|MINOR|PATCH) = ([0-9]+);$")
-        set(PROJECT_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
+        set(PROJECT_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}")
     endif()
 endforeach()
 
