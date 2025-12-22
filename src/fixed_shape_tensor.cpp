@@ -31,17 +31,9 @@ namespace sparrow_extensions
     bool fixed_shape_tensor_extension::metadata::is_valid() const
     {
         // Shape must not be empty and all dimensions must be positive
-        if (shape.empty())
+        if (shape.empty() || !std::ranges::all_of(shape, [](auto dim) { return dim > 0; }))
         {
             return false;
-        }
-
-        for (const auto dim : shape)
-        {
-            if (dim <= 0)
-            {
-                return false;
-            }
         }
 
         // If dim_names is present, it must match the shape size
@@ -62,13 +54,10 @@ namespace sparrow_extensions
             // Check that permutation contains exactly [0, 1, ..., N-1]
             std::vector<std::int64_t> sorted_perm = perm;
             std::ranges::sort(sorted_perm);
-            for (std::size_t i = 0; i < sorted_perm.size(); ++i)
-            {
-                if (sorted_perm[i] != static_cast<std::int64_t>(i))
-                {
-                    return false;
-                }
-            }
+            return std::ranges::equal(
+                sorted_perm,
+                std::views::iota(std::int64_t{0}, static_cast<std::int64_t>(sorted_perm.size()))
+            );
         }
 
         return true;
@@ -86,27 +75,28 @@ namespace sparrow_extensions
 
     std::string fixed_shape_tensor_extension::metadata::to_json() const
     {
-        std::ostringstream oss;
-        oss << "{\"shape\":[";
-        for (std::size_t i = 0; i < shape.size(); ++i)
+        // Helper to serialize integer array
+        auto serialize_int_array = [](std::ostringstream& oss, const std::vector<std::int64_t>& arr)
         {
-            if (i > 0)
+            oss << "[";
+            for (std::size_t i = 0; i < arr.size(); ++i)
             {
-                oss << ",";
+                if (i > 0) oss << ",";
+                oss << arr[i];
             }
-            oss << shape[i];
-        }
-        oss << "]";
+            oss << "]";
+        };
+
+        std::ostringstream oss;
+        oss << "{\"shape\":";
+        serialize_int_array(oss, shape);
 
         if (dim_names.has_value())
         {
             oss << ",\"dim_names\":[";
             for (std::size_t i = 0; i < dim_names->size(); ++i)
             {
-                if (i > 0)
-                {
-                    oss << ",";
-                }
+                if (i > 0) oss << ",";
                 oss << "\"" << (*dim_names)[i] << "\"";
             }
             oss << "]";
@@ -114,16 +104,8 @@ namespace sparrow_extensions
 
         if (permutation.has_value())
         {
-            oss << ",\"permutation\":[";
-            for (std::size_t i = 0; i < permutation->size(); ++i)
-            {
-                if (i > 0)
-                {
-                    oss << ",";
-                }
-                oss << (*permutation)[i];
-            }
-            oss << "]";
+            oss << ",\"permutation\":";
+            serialize_int_array(oss, *permutation);
         }
 
         oss << "}";
@@ -193,10 +175,10 @@ namespace sparrow_extensions
             return std::stoll(json_str.substr(start, pos - start));
         };
 
-        // Helper to read an array of integers
-        auto read_int_array = [&]() -> std::vector<std::int64_t>
+        // Generic helper to read an array
+        auto read_array = [&]<typename T>(auto reader) -> std::vector<T>
         {
-            std::vector<std::int64_t> arr;
+            std::vector<T> arr;
             skip_whitespace();
             if (pos >= json_str.size() || json_str[pos] != '[')
             {
@@ -213,7 +195,7 @@ namespace sparrow_extensions
 
             while (true)
             {
-                arr.push_back(read_int());
+                arr.push_back(reader());
                 skip_whitespace();
 
                 if (pos >= json_str.size())
@@ -237,49 +219,8 @@ namespace sparrow_extensions
             return arr;
         };
 
-        // Helper to read an array of strings
-        auto read_string_array = [&]() -> std::vector<std::string>
-        {
-            std::vector<std::string> arr;
-            skip_whitespace();
-            if (pos >= json_str.size() || json_str[pos] != '[')
-            {
-                throw std::runtime_error("Expected opening bracket");
-            }
-            ++pos;
-
-            skip_whitespace();
-            if (pos < json_str.size() && json_str[pos] == ']')
-            {
-                ++pos;
-                return arr;
-            }
-
-            while (true)
-            {
-                arr.push_back(read_string());
-                skip_whitespace();
-
-                if (pos >= json_str.size())
-                {
-                    throw std::runtime_error("Unexpected end of JSON");
-                }
-
-                if (json_str[pos] == ']')
-                {
-                    ++pos;
-                    break;
-                }
-
-                if (json_str[pos] != ',')
-                {
-                    throw std::runtime_error("Expected comma or closing bracket");
-                }
-                ++pos;
-            }
-
-            return arr;
-        };
+        auto read_int_array = [&]() { return read_array.template operator()<std::int64_t>(read_int); };
+        auto read_string_array = [&]() { return read_array.template operator()<std::string>(read_string); };
 
         // Parse the JSON object
         skip_whitespace();
@@ -405,30 +346,21 @@ namespace sparrow_extensions
         const sparrow::arrow_proxy& proxy
     )
     {
-        std::optional<sparrow::key_value_view> metadata_opt = proxy.metadata();
+        const auto metadata_opt = proxy.metadata();
         if (!metadata_opt.has_value())
         {
             throw std::runtime_error("Missing extension metadata");
         }
 
-        const auto& metadata = *metadata_opt;
-        std::string metadata_json;
-
-        for (const auto& [key, value] : metadata)
+        for (const auto& [key, value] : *metadata_opt)
         {
             if (key == "ARROW:extension:metadata")
             {
-                metadata_json = value;
-                break;
+                return metadata::from_json(value);
             }
         }
 
-        if (metadata_json.empty())
-        {
-            throw std::runtime_error("Missing ARROW:extension:metadata");
-        }
-
-        return metadata::from_json(metadata_json);
+        throw std::runtime_error("Missing ARROW:extension:metadata");
     }
 
     // fixed_shape_tensor_array implementation
@@ -451,7 +383,6 @@ namespace sparrow_extensions
     {
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
         SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
-        SPARROW_ASSERT_TRUE(m_storage.size() * list_size == (flat_values.size() ? flat_values.size() : m_storage.size() * list_size)); 
 
         // Add extension metadata to the storage using array_access
         fixed_shape_tensor_extension::init(

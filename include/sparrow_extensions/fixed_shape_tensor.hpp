@@ -26,6 +26,8 @@
 #include "sparrow/types/data_type.hpp"
 #include "sparrow/utils/contracts.hpp"
 
+#include "sparrow_extensions/config/config.hpp"
+
 namespace sparrow_extensions
 {
     /**
@@ -148,7 +150,7 @@ namespace sparrow_extensions
      * This class provides a convenient interface for working with fixed-shape tensors
      * while maintaining compatibility with the Arrow format.
      */
-    class fixed_shape_tensor_array
+    class SPARROW_EXTENSIONS_API fixed_shape_tensor_array
     {
     public:
 
@@ -226,7 +228,8 @@ namespace sparrow_extensions
          *
          * @pre i < size()
          */
-        [[nodiscard]] auto operator[](size_type i) const -> decltype(std::declval<const sparrow::fixed_sized_list_array&>()[i]);
+        [[nodiscard]] auto operator[](size_type i) const
+            -> decltype(std::declval<const sparrow::fixed_sized_list_array&>()[i]);
 
         /**
          * @brief Returns the underlying arrow_proxy.
