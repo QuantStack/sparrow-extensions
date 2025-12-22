@@ -19,4 +19,7 @@
 #include <sparrow_extensions/config/sparrow_extensions_version.hpp>
 
 // Extensions
+#include <sparrow_extensions/bool8_array.hpp>
+#include <sparrow_extensions/fixed_shape_tensor.hpp>
+#include <sparrow_extensions/json_array.hpp>
 #include <sparrow_extensions/uuid_array.hpp>
