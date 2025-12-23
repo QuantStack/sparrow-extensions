@@ -347,22 +347,27 @@ namespace sparrow_extensions
         std::optional<std::string_view> name,
         std::optional<METADATA_RANGE> arrow_metadata
     )
-        : m_storage(
-              list_size,
-              std::move(flat_values),
-              std::forward<VB>(validity_input),
-              name,
-              std::forward<std::optional<METADATA_RANGE>>(arrow_metadata)
-          )
+        : m_storage(list_size, std::move(flat_values), std::forward<VB>(validity_input))
         , m_metadata(tensor_metadata)
     {
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
         SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
 
-        fixed_shape_tensor_extension::init(
-            sparrow::detail::array_access::get_arrow_proxy(m_storage),
-            m_metadata
-        );
+        // Get the proxy and set name/metadata if provided
+        auto& proxy = sparrow::detail::array_access::get_arrow_proxy(m_storage);
+        
+        if (name.has_value())
+        {
+            proxy.set_name(*name);
+        }
+        
+        if (arrow_metadata.has_value())
+        {
+            proxy.set_metadata(std::make_optional(*arrow_metadata));
+        }
+
+        // Add extension metadata
+        fixed_shape_tensor_extension::init(proxy, m_metadata);
     }
 
 }  // namespace sparrow_extensions
