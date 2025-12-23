@@ -375,10 +375,9 @@ namespace sparrow_extensions
     fixed_shape_tensor_array::fixed_shape_tensor_array(
         std::uint64_t list_size,
         sparrow::array&& flat_values,
-        const metadata_type& tensor_metadata,
-        bool nullable
+        const metadata_type& tensor_metadata
     )
-        : m_storage(list_size, std::move(flat_values), nullable)
+        : m_storage(list_size, std::move(flat_values))
         , m_metadata(tensor_metadata)
     {
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
@@ -389,6 +388,32 @@ namespace sparrow_extensions
             sparrow::detail::array_access::get_arrow_proxy(m_storage),
             m_metadata
         );
+    }
+
+    fixed_shape_tensor_array::fixed_shape_tensor_array(
+        std::uint64_t list_size,
+        sparrow::array&& flat_values,
+        const metadata_type& tensor_metadata,
+        std::string_view name,
+        std::optional<std::vector<sparrow::metadata_pair>> arrow_metadata
+    )
+        : m_storage(list_size, std::move(flat_values))
+        , m_metadata(tensor_metadata)
+    {
+        SPARROW_ASSERT_TRUE(m_metadata.is_valid());
+        SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
+
+        // Get the proxy and set name/metadata
+        auto& proxy = sparrow::detail::array_access::get_arrow_proxy(m_storage);
+        proxy.set_name(name);
+        
+        if (arrow_metadata.has_value())
+        {
+            proxy.set_metadata(std::make_optional(*arrow_metadata));
+        }
+
+        // Add extension metadata
+        fixed_shape_tensor_extension::init(proxy, m_metadata);
     }
 
     auto fixed_shape_tensor_array::size() const -> size_type
@@ -406,12 +431,12 @@ namespace sparrow_extensions
         return m_metadata.shape;
     }
 
-    auto fixed_shape_tensor_array::storage() const -> const sparrow::fixed_sized_list_array&
+    const sparrow::fixed_sized_list_array& fixed_shape_tensor_array::storage() const
     {
         return m_storage;
     }
 
-    auto fixed_shape_tensor_array::storage() -> sparrow::fixed_sized_list_array&
+    sparrow::fixed_sized_list_array& fixed_shape_tensor_array::storage()
     {
         return m_storage;
     }

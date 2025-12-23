@@ -21,10 +21,9 @@
 #include <string_view>
 #include <vector>
 
-#include "sparrow/array.hpp"
+#include "sparrow/buffer/dynamic_bitset/dynamic_bitset.hpp"  // Workaround for sparrow 2.0.0 bug
 #include "sparrow/list_array.hpp"
 #include "sparrow/types/data_type.hpp"
-#include "sparrow/utils/contracts.hpp"
 
 #include "sparrow_extensions/config/config.hpp"
 
@@ -77,7 +76,7 @@ namespace sparrow_extensions
          * Stores the shape, optional dimension names, and optional permutation
          * for the tensor layout.
          */
-        struct metadata
+        struct SPARROW_EXTENSIONS_API metadata
         {
             std::vector<std::int64_t> shape;
             std::optional<std::vector<std::string>> dim_names;
@@ -174,7 +173,6 @@ namespace sparrow_extensions
          * @param list_size Total number of elements per tensor (product of shape)
          * @param flat_values Flattened sparrow array of all tensor elements in row-major order
          * @param tensor_metadata Metadata describing the tensor shape and layout
-         * @param nullable Whether the array should support null values
          *
          * @pre flat_values.size() must be divisible by list_size
          * @pre list_size must equal tensor_metadata.compute_size()
@@ -184,8 +182,80 @@ namespace sparrow_extensions
         fixed_shape_tensor_array(
             std::uint64_t list_size,
             sparrow::array&& flat_values,
+            const metadata_type& tensor_metadata
+        );
+
+        /**
+         * @brief Constructs a fixed shape tensor array with name and/or metadata.
+         *
+         * @param list_size Total number of elements per tensor (product of shape)
+         * @param flat_values Flattened sparrow array of all tensor elements in row-major order
+         * @param tensor_metadata Metadata describing the tensor shape and layout
+         * @param name Name for the array
+         * @param arrow_metadata Optional Arrow metadata key-value pairs
+         *
+         * @pre flat_values.size() must be divisible by list_size
+         * @pre list_size must equal tensor_metadata.compute_size()
+         * @pre tensor_metadata must be valid
+         * @post Array contains tensors with the specified name and metadata
+         */
+        fixed_shape_tensor_array(
+            std::uint64_t list_size,
+            sparrow::array&& flat_values,
             const metadata_type& tensor_metadata,
-            bool nullable = true
+            std::string_view name,
+            std::optional<std::vector<sparrow::metadata_pair>> arrow_metadata = std::nullopt
+        );
+
+        /**
+         * @brief Constructs a fixed shape tensor array with validity bitmap.
+         *
+         * @tparam VB Type of validity bitmap input
+         * @param list_size Total number of elements per tensor (product of shape)
+         * @param flat_values Flattened sparrow array of all tensor elements in row-major order
+         * @param tensor_metadata Metadata describing the tensor shape and layout
+         * @param validity_input Validity bitmap (one bit per tensor)
+         *
+         * @pre flat_values.size() must be divisible by list_size
+         * @pre list_size must equal tensor_metadata.compute_size()
+         * @pre tensor_metadata must be valid
+         * @pre validity_input size must match number of tensors (flat_values.size() / list_size)
+         * @post Array contains tensors with the specified validity bitmap
+         */
+        template <sparrow::validity_bitmap_input VB>
+        fixed_shape_tensor_array(
+            std::uint64_t list_size,
+            sparrow::array&& flat_values,
+            const metadata_type& tensor_metadata,
+            VB&& validity_input
+        );
+
+        /**
+         * @brief Constructs a fixed shape tensor array with validity, name, and metadata.
+         *
+         * @tparam VB Type of validity bitmap input
+         * @tparam METADATA_RANGE Type of metadata container
+         * @param list_size Total number of elements per tensor (product of shape)
+         * @param flat_values Flattened sparrow array of all tensor elements in row-major order
+         * @param tensor_metadata Metadata describing the tensor shape and layout
+         * @param validity_input Validity bitmap (one bit per tensor)
+         * @param name Optional name for the array
+         * @param arrow_metadata Optional Arrow metadata key-value pairs
+         *
+         * @pre flat_values.size() must be divisible by list_size
+         * @pre list_size must equal tensor_metadata.compute_size()
+         * @pre tensor_metadata must be valid
+         * @pre validity_input size must match number of tensors (flat_values.size() / list_size)
+         * @post Array contains tensors with the specified validity bitmap, name, and metadata
+         */
+        template <sparrow::validity_bitmap_input VB, sparrow::input_metadata_container METADATA_RANGE = std::vector<sparrow::metadata_pair>>
+        fixed_shape_tensor_array(
+            std::uint64_t list_size,
+            sparrow::array&& flat_values,
+            const metadata_type& tensor_metadata,
+            VB&& validity_input,
+            std::optional<std::string_view> name,
+            std::optional<METADATA_RANGE> arrow_metadata = std::nullopt
         );
 
         // Default special members
@@ -246,6 +316,54 @@ namespace sparrow_extensions
         sparrow::fixed_sized_list_array m_storage;
         metadata_type m_metadata;
     };
+
+    // Template constructor implementations
+
+    template <sparrow::validity_bitmap_input VB>
+    fixed_shape_tensor_array::fixed_shape_tensor_array(
+        std::uint64_t list_size,
+        sparrow::array&& flat_values,
+        const metadata_type& tensor_metadata,
+        VB&& validity_input
+    )
+        : m_storage(list_size, std::move(flat_values), std::forward<VB>(validity_input))
+        , m_metadata(tensor_metadata)
+    {
+        SPARROW_ASSERT_TRUE(m_metadata.is_valid());
+        SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
+
+        fixed_shape_tensor_extension::init(
+            sparrow::detail::array_access::get_arrow_proxy(m_storage),
+            m_metadata
+        );
+    }
+
+    template <sparrow::validity_bitmap_input VB, sparrow::input_metadata_container METADATA_RANGE>
+    fixed_shape_tensor_array::fixed_shape_tensor_array(
+        std::uint64_t list_size,
+        sparrow::array&& flat_values,
+        const metadata_type& tensor_metadata,
+        VB&& validity_input,
+        std::optional<std::string_view> name,
+        std::optional<METADATA_RANGE> arrow_metadata
+    )
+        : m_storage(
+              list_size,
+              std::move(flat_values),
+              std::forward<VB>(validity_input),
+              name,
+              std::forward<std::optional<METADATA_RANGE>>(arrow_metadata)
+          )
+        , m_metadata(tensor_metadata)
+    {
+        SPARROW_ASSERT_TRUE(m_metadata.is_valid());
+        SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
+
+        fixed_shape_tensor_extension::init(
+            sparrow::detail::array_access::get_arrow_proxy(m_storage),
+            m_metadata
+        );
+    }
 
 }  // namespace sparrow_extensions
 
