@@ -281,9 +281,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 CHECK_EQ(tensor_array.size(), 3);
                 CHECK(tensor_array.shape() == shape);
@@ -310,9 +308,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 CHECK_EQ(tensor_array.size(), 2);
                 CHECK(tensor_array.shape() == shape);
@@ -340,9 +336,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 CHECK_EQ(tensor_array.size(), 1);
                 CHECK(tensor_array.shape() == shape);
@@ -369,9 +363,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 CHECK_EQ(tensor_array.size(), 4);
 
@@ -412,9 +404,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 // Access first tensor
                 auto tensor0 = tensor_array[0];
@@ -439,9 +429,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 CHECK_EQ(tensor_array.size(), 5);
                 CHECK_EQ(tensor_array.shape()[0], 10);
@@ -463,9 +451,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 // Get and verify the metadata
                 const auto& extracted_meta = tensor_array.get_metadata();
@@ -489,9 +475,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array original(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 fixed_shape_tensor_array copy(original);
 
@@ -511,9 +495,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array original(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 const std::size_t original_size = original.size();
                 const auto original_shape = original.shape();
@@ -537,9 +519,7 @@ namespace sparrow_extensions
                 fixed_shape_tensor_array tensor_array(
                     list_size,
                     sparrow::array(std::move(values_array)),
-                    tensor_meta,
-                    true
-                );
+                    tensor_meta);
 
                 // Test const access
                 const auto& const_storage = tensor_array.storage();
@@ -565,9 +545,7 @@ namespace sparrow_extensions
                     fixed_shape_tensor_array tensor_array(
                         list_size,
                         sparrow::array(std::move(values_array)),
-                        tensor_meta,
-                        true
-                    );
+                        tensor_meta);
 
                     CHECK_EQ(tensor_array.size(), 1);
                     CHECK(tensor_array.shape() == shape);
@@ -590,9 +568,7 @@ namespace sparrow_extensions
                     fixed_shape_tensor_array tensor_array(
                         list_size,
                         sparrow::array(std::move(values_array)),
-                        tensor_meta,
-                        true
-                    );
+                        tensor_meta);
 
                     CHECK_EQ(tensor_array.size(), 1);
                     CHECK(tensor_array.shape() == shape);
@@ -617,9 +593,7 @@ namespace sparrow_extensions
                     fixed_shape_tensor_array tensor_array(
                         list_size,
                         sparrow::array(std::move(values_array)),
-                        tensor_meta,
-                        true
-                    );
+                        tensor_meta);
 
                     CHECK_EQ(tensor_array.size(), 1);
                     CHECK(tensor_array.shape() == shape);  // Physical shape
@@ -629,6 +603,149 @@ namespace sparrow_extensions
 
                     // Note: Logical shape would be [500, 100, 200]
                     // which is shape[permutation[i]] for each i
+                }
+            }
+
+        TEST_CASE("constructor with name and metadata")
+            {
+                SUBCASE("with name only")
+                {
+                    std::vector<float> flat_data;
+                    for (int i = 0; i < 12; ++i)
+                    {
+                        flat_data.push_back(static_cast<float>(i));
+                    }
+
+                    sparrow::primitive_array<float> values_array(flat_data);
+                    const std::vector<std::int64_t> shape{2, 3};
+                    metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                    const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                    fixed_shape_tensor_array tensor_array(
+                        list_size,
+                        sparrow::array(std::move(values_array)),
+                        tensor_meta,
+                        "my_tensor_array");
+
+                    CHECK_EQ(tensor_array.size(), 2);
+                    CHECK(tensor_array.shape() == shape);
+
+                    const auto& proxy = tensor_array.get_arrow_proxy();
+                    CHECK(proxy.name() == "my_tensor_array");
+                }
+
+                SUBCASE("with metadata only")
+                {
+                    std::vector<int32_t> flat_data(8);
+                    std::iota(flat_data.begin(), flat_data.end(), 0);
+
+                    sparrow::primitive_array<int32_t> values_array(flat_data);
+                    const std::vector<std::int64_t> shape{2, 2};
+                    metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                    const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                    std::vector<sparrow::metadata_pair> arrow_meta{
+                        {"key1", "value1"},
+                        {"key2", "value2"}
+                    };
+
+                    fixed_shape_tensor_array tensor_array(
+                        list_size,
+                        sparrow::array(std::move(values_array)),
+                        tensor_meta,
+                        "",  // empty name
+                        arrow_meta);
+
+                    CHECK_EQ(tensor_array.size(), 2);
+                    CHECK(tensor_array.shape() == shape);
+
+                    const auto& proxy = tensor_array.get_arrow_proxy();
+                    const auto metadata_opt = proxy.metadata();
+                    REQUIRE(metadata_opt.has_value());
+
+                    bool found_key1 = false;
+                    bool found_key2 = false;
+                    for (const auto& [key, value] : *metadata_opt)
+                    {
+                        if (key == "key1" && value == "value1")
+                            found_key1 = true;
+                        if (key == "key2" && value == "value2")
+                            found_key2 = true;
+                    }
+                    CHECK(found_key1);
+                    CHECK(found_key2);
+                }
+
+                SUBCASE("with both name and metadata")
+                {
+                    std::vector<double> flat_data(24);
+                    std::iota(flat_data.begin(), flat_data.end(), 0.0);
+
+                    sparrow::primitive_array<double> values_array(flat_data);
+                    const std::vector<std::int64_t> shape{2, 3, 4};
+                    const std::vector<std::string> dim_names{"X", "Y", "Z"};
+                    metadata tensor_meta{shape, dim_names, std::nullopt};
+                    const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                    std::vector<sparrow::metadata_pair> arrow_meta{
+                        {"author", "test"},
+                        {"version", "1.0"}
+                    };
+
+                    fixed_shape_tensor_array tensor_array(
+                        list_size,
+                        sparrow::array(std::move(values_array)),
+                        tensor_meta,
+                        "named_tensor",
+                        arrow_meta);
+
+                    CHECK_EQ(tensor_array.size(), 1);
+                    CHECK(tensor_array.shape() == shape);
+
+                    const auto& proxy = tensor_array.get_arrow_proxy();
+                    CHECK(proxy.name() == "named_tensor");
+
+                    const auto& meta = tensor_array.get_metadata();
+                    REQUIRE(meta.dim_names.has_value());
+                    CHECK(*meta.dim_names == dim_names);
+
+                    const auto metadata_opt = proxy.metadata();
+                    REQUIRE(metadata_opt.has_value());
+
+                    bool found_extension = false;
+                    bool found_author = false;
+                    for (const auto& [key, value] : *metadata_opt)
+                    {
+                        if (key == "ARROW:extension:name" && value == "arrow.fixed_shape_tensor")
+                            found_extension = true;
+                        if (key == "author" && value == "test")
+                            found_author = true;
+                    }
+                    CHECK(found_extension);
+                    CHECK(found_author);
+                }
+
+                SUBCASE("simple name without metadata")
+                {
+                    std::vector<float> flat_data(6);
+                    std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                    sparrow::primitive_array<float> values_array(flat_data);
+                    const std::vector<std::int64_t> shape{2, 3};
+                    metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                    const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                    fixed_shape_tensor_array tensor_array(
+                        list_size,
+                        sparrow::array(std::move(values_array)),
+                        tensor_meta,
+                        "test_array");
+
+                    CHECK_EQ(tensor_array.size(), 1);
+                    CHECK(tensor_array.shape() == shape);
+                    
+                    const auto& proxy = tensor_array.get_arrow_proxy();
+                    CHECK(proxy.name() == "test_array");
                 }
             }
     }
