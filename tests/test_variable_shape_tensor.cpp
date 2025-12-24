@@ -1,0 +1,348 @@
+// Copyright 2024 Man Group Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <cstdint>
+#include <vector>
+
+#include <doctest/doctest.h>
+
+#include "sparrow_extensions/variable_shape_tensor.hpp"
+
+namespace sparrow_extensions
+{
+    TEST_SUITE("variable_shape_tensor")
+    {
+        using metadata = variable_shape_tensor_extension::metadata;
+
+        TEST_CASE("metadata::is_valid")
+        {
+            SUBCASE("empty metadata")
+            {
+                metadata meta{std::nullopt, std::nullopt, std::nullopt};
+                CHECK(meta.is_valid());
+            }
+
+            SUBCASE("valid with dim_names only")
+            {
+                metadata meta{std::vector<std::string>{"C", "H", "W"}, std::nullopt, std::nullopt};
+                CHECK(meta.is_valid());
+            }
+
+            SUBCASE("valid with permutation only")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{2, 0, 1}, std::nullopt};
+                CHECK(meta.is_valid());
+            }
+
+            SUBCASE("valid with uniform_shape only")
+            {
+                metadata meta{
+                    std::nullopt,
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt, 3}
+                };
+                CHECK(meta.is_valid());
+            }
+
+            SUBCASE("valid with all fields")
+            {
+                metadata meta{
+                    std::vector<std::string>{"H", "W", "C"},
+                    std::vector<std::int64_t>{0, 1, 2},
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt, 3}
+                };
+                CHECK(meta.is_valid());
+            }
+
+            SUBCASE("invalid - mismatched dim_names and permutation sizes")
+            {
+                metadata meta{
+                    std::vector<std::string>{"C", "H"},
+                    std::vector<std::int64_t>{2, 0, 1},
+                    std::nullopt
+                };
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - mismatched dim_names and uniform_shape sizes")
+            {
+                metadata meta{
+                    std::vector<std::string>{"H", "W", "C"},
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt}
+                };
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - empty permutation")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{}, std::nullopt};
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - permutation with duplicate values")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{0, 0, 1}, std::nullopt};
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - permutation out of range")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{0, 1, 3}, std::nullopt};
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - negative value in permutation")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{-1, 0, 1}, std::nullopt};
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - negative dimension in uniform_shape")
+            {
+                metadata meta{
+                    std::nullopt,
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt, -3}
+                };
+                CHECK_FALSE(meta.is_valid());
+            }
+
+            SUBCASE("invalid - zero dimension in uniform_shape")
+            {
+                metadata meta{
+                    std::nullopt,
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{0, std::nullopt, 3}
+                };
+                CHECK_FALSE(meta.is_valid());
+            }
+        }
+
+        TEST_CASE("metadata::get_ndim")
+        {
+            SUBCASE("from dim_names")
+            {
+                metadata meta{std::vector<std::string>{"C", "H", "W"}, std::nullopt, std::nullopt};
+                auto ndim = meta.get_ndim();
+                REQUIRE(ndim.has_value());
+                CHECK_EQ(*ndim, 3);
+            }
+
+            SUBCASE("from permutation")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{2, 0, 1, 3}, std::nullopt};
+                auto ndim = meta.get_ndim();
+                REQUIRE(ndim.has_value());
+                CHECK_EQ(*ndim, 4);
+            }
+
+            SUBCASE("from uniform_shape")
+            {
+                metadata meta{
+                    std::nullopt,
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt}
+                };
+                auto ndim = meta.get_ndim();
+                REQUIRE(ndim.has_value());
+                CHECK_EQ(*ndim, 2);
+            }
+
+            SUBCASE("no ndim available")
+            {
+                metadata meta{std::nullopt, std::nullopt, std::nullopt};
+                auto ndim = meta.get_ndim();
+                CHECK_FALSE(ndim.has_value());
+            }
+        }
+
+        TEST_CASE("metadata::to_json")
+        {
+            SUBCASE("empty metadata")
+            {
+                metadata meta{std::nullopt, std::nullopt, std::nullopt};
+                const std::string json = meta.to_json();
+                CHECK_EQ(json, "{}");
+            }
+
+            SUBCASE("with dim_names only")
+            {
+                metadata meta{std::vector<std::string>{"C", "H", "W"}, std::nullopt, std::nullopt};
+                const std::string json = meta.to_json();
+                CHECK_EQ(json, R"({"dim_names":["C","H","W"]})");
+            }
+
+            SUBCASE("with permutation only")
+            {
+                metadata meta{std::nullopt, std::vector<std::int64_t>{2, 0, 1}, std::nullopt};
+                const std::string json = meta.to_json();
+                CHECK_EQ(json, R"({"permutation":[2,0,1]})");
+            }
+
+            SUBCASE("with uniform_shape only")
+            {
+                metadata meta{
+                    std::nullopt,
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt, 3}
+                };
+                const std::string json = meta.to_json();
+                CHECK_EQ(json, R"({"uniform_shape":[400,null,3]})");
+            }
+
+            SUBCASE("with dim_names and uniform_shape")
+            {
+                metadata meta{
+                    std::vector<std::string>{"H", "W", "C"},
+                    std::nullopt,
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt, 3}
+                };
+                const std::string json = meta.to_json();
+                CHECK_EQ(json, R"({"dim_names":["H","W","C"],"uniform_shape":[400,null,3]})");
+            }
+
+            SUBCASE("with all fields")
+            {
+                metadata meta{
+                    std::vector<std::string>{"X", "Y", "Z"},
+                    std::vector<std::int64_t>{2, 0, 1},
+                    std::vector<std::optional<std::int32_t>>{std::nullopt, 10, std::nullopt}
+                };
+                const std::string json = meta.to_json();
+                CHECK_EQ(
+                    json,
+                    R"({"dim_names":["X","Y","Z"],"permutation":[2,0,1],"uniform_shape":[null,10,null]})"
+                );
+            }
+        }
+
+        TEST_CASE("metadata::from_json")
+        {
+            SUBCASE("empty JSON")
+            {
+                const std::string json = "{}";
+                const metadata meta = metadata::from_json(json);
+                CHECK(meta.is_valid());
+                CHECK_FALSE(meta.dim_names.has_value());
+                CHECK_FALSE(meta.permutation.has_value());
+                CHECK_FALSE(meta.uniform_shape.has_value());
+            }
+
+            SUBCASE("with dim_names")
+            {
+                const std::string json = R"({"dim_names":["C","H","W"]})";
+                const metadata meta = metadata::from_json(json);
+                CHECK(meta.is_valid());
+                REQUIRE(meta.dim_names.has_value());
+                REQUIRE_EQ(meta.dim_names->size(), 3);
+                CHECK_EQ((*meta.dim_names)[0], "C");
+                CHECK_EQ((*meta.dim_names)[1], "H");
+                CHECK_EQ((*meta.dim_names)[2], "W");
+                CHECK_FALSE(meta.permutation.has_value());
+                CHECK_FALSE(meta.uniform_shape.has_value());
+            }
+
+            SUBCASE("with permutation")
+            {
+                const std::string json = R"({"permutation":[2,0,1]})";
+                const metadata meta = metadata::from_json(json);
+                CHECK(meta.is_valid());
+                CHECK_FALSE(meta.dim_names.has_value());
+                REQUIRE(meta.permutation.has_value());
+                REQUIRE_EQ(meta.permutation->size(), 3);
+                CHECK_EQ((*meta.permutation)[0], 2);
+                CHECK_EQ((*meta.permutation)[1], 0);
+                CHECK_EQ((*meta.permutation)[2], 1);
+                CHECK_FALSE(meta.uniform_shape.has_value());
+            }
+
+            SUBCASE("with uniform_shape")
+            {
+                const std::string json = R"({"uniform_shape":[400,null,3]})";
+                const metadata meta = metadata::from_json(json);
+                CHECK(meta.is_valid());
+                CHECK_FALSE(meta.dim_names.has_value());
+                CHECK_FALSE(meta.permutation.has_value());
+                REQUIRE(meta.uniform_shape.has_value());
+                REQUIRE_EQ(meta.uniform_shape->size(), 3);
+                REQUIRE((*meta.uniform_shape)[0].has_value());
+                CHECK_EQ(*(*meta.uniform_shape)[0], 400);
+                CHECK_FALSE((*meta.uniform_shape)[1].has_value());
+                REQUIRE((*meta.uniform_shape)[2].has_value());
+                CHECK_EQ(*(*meta.uniform_shape)[2], 3);
+            }
+
+            SUBCASE("with all fields")
+            {
+                const std::string json =
+                    R"({"dim_names":["H","W","C"],"permutation":[0,1,2],"uniform_shape":[400,null,3]})";
+                const metadata meta = metadata::from_json(json);
+                CHECK(meta.is_valid());
+                REQUIRE(meta.dim_names.has_value());
+                CHECK_EQ(meta.dim_names->size(), 3);
+                REQUIRE(meta.permutation.has_value());
+                CHECK_EQ(meta.permutation->size(), 3);
+                REQUIRE(meta.uniform_shape.has_value());
+                CHECK_EQ(meta.uniform_shape->size(), 3);
+            }
+
+            SUBCASE("with whitespace")
+            {
+                const std::string json = R"(  {  "dim_names"  : [ "X" , "Y" ]  }  )";
+                const metadata meta = metadata::from_json(json);
+                CHECK(meta.is_valid());
+                REQUIRE(meta.dim_names.has_value());
+                REQUIRE_EQ(meta.dim_names->size(), 2);
+            }
+
+            SUBCASE("invalid - malformed JSON")
+            {
+                const std::string json = R"({"dim_names":["C","H","W")";
+                CHECK_THROWS_AS(metadata::from_json(json), std::runtime_error);
+            }
+        }
+
+        TEST_CASE("metadata::round-trip serialization")
+        {
+            SUBCASE("empty metadata")
+            {
+                metadata original{std::nullopt, std::nullopt, std::nullopt};
+                const std::string json = original.to_json();
+                const metadata parsed = metadata::from_json(json);
+                CHECK(parsed.dim_names == original.dim_names);
+                CHECK(parsed.permutation == original.permutation);
+                CHECK(parsed.uniform_shape == original.uniform_shape);
+            }
+
+            SUBCASE("with all fields")
+            {
+                metadata original{
+                    std::vector<std::string>{"H", "W", "C"},
+                    std::vector<std::int64_t>{2, 0, 1},
+                    std::vector<std::optional<std::int32_t>>{400, std::nullopt, 3}
+                };
+                const std::string json = original.to_json();
+                const metadata parsed = metadata::from_json(json);
+                CHECK(parsed.dim_names == original.dim_names);
+                CHECK(parsed.permutation == original.permutation);
+                CHECK(parsed.uniform_shape == original.uniform_shape);
+            }
+        }
+
+        // Note: Full integration tests with array construction are pending due to
+        // compiler issues with complex list_array template instantiations.
+        // The metadata functionality is fully tested above.
+    }
+}  // namespace sparrow_extensions

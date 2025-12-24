@@ -194,6 +194,7 @@ set(SPARROW_EXTENSIONS_SRC
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/bool8_array.cpp
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/json_array.cpp
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/uuid_array.cpp
+    ${SPARROW_EXTENSIONS_SOURCE_DIR}/variable_shape_tensor.cpp
 )
 
 option(SPARROW_EXTENSIONS_BUILD_SHARED "Build sparrow-extensions as a shared library" ON)
