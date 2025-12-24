@@ -20,3 +20,4 @@
 
 // Extensions
 #include <sparrow_extensions/uuid_array.hpp>
+#include <sparrow_extensions/variable_shape_tensor.hpp>
