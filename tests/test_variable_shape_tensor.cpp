@@ -615,5 +615,195 @@ namespace sparrow_extensions
             CHECK(std::is_same_v<inner_ref, sparrow::struct_value>);
             CHECK(std::is_same_v<inner_const_ref, sparrow::struct_value>);
         }
+
+        TEST_CASE("variable_shape_tensor_array::empty")
+        {
+            SUBCASE("empty array")
+            {
+                // Create empty array
+                sparrow::primitive_array<std::int32_t> flat_data({});
+                std::vector<std::size_t> offsets = {0};
+                sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+                sparrow::primitive_array<std::int32_t> flat_shapes({});
+                sparrow::fixed_sized_list_array tensor_shapes(1, sparrow::array(std::move(flat_shapes)));
+
+                metadata meta{std::nullopt, std::nullopt, std::nullopt};
+                
+                variable_shape_tensor_array tensor_array(
+                    1,
+                    sparrow::array(std::move(tensor_data)),
+                    sparrow::array(std::move(tensor_shapes)),
+                    meta
+                );
+
+                CHECK(tensor_array.empty());
+                CHECK_EQ(tensor_array.size(), 0);
+            }
+
+            SUBCASE("non-empty array")
+            {
+                sparrow::primitive_array<std::int32_t> flat_data({1, 2});
+                std::vector<std::size_t> offsets = {0, 2};
+                sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+                sparrow::primitive_array<std::int32_t> flat_shapes({2});
+                sparrow::fixed_sized_list_array tensor_shapes(1, sparrow::array(std::move(flat_shapes)));
+
+                metadata meta{std::nullopt, std::nullopt, std::nullopt};
+                
+                variable_shape_tensor_array tensor_array(
+                    1,
+                    sparrow::array(std::move(tensor_data)),
+                    sparrow::array(std::move(tensor_shapes)),
+                    meta
+                );
+
+                CHECK_FALSE(tensor_array.empty());
+                CHECK_EQ(tensor_array.size(), 1);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::at")
+        {
+            sparrow::primitive_array<std::int32_t> flat_data({1, 2, 3, 4, 5, 6});
+            std::vector<std::size_t> offsets = {0, 2, 4, 6};
+            sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+            sparrow::primitive_array<std::int32_t> flat_shapes({2, 2, 2});
+            sparrow::fixed_sized_list_array tensor_shapes(1, sparrow::array(std::move(flat_shapes)));
+
+            metadata meta{std::nullopt, std::nullopt, std::nullopt};
+            
+            variable_shape_tensor_array tensor_array(
+                1,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta
+            );
+
+            SUBCASE("valid access")
+            {
+                auto elem0 = tensor_array.at(0);
+                CHECK(elem0.has_value());
+                
+                auto elem1 = tensor_array.at(1);
+                CHECK(elem1.has_value());
+                
+                auto elem2 = tensor_array.at(2);
+                CHECK(elem2.has_value());
+            }
+
+            SUBCASE("out of range")
+            {
+                CHECK_THROWS_AS(tensor_array.at(3), std::out_of_range);
+                CHECK_THROWS_AS(tensor_array.at(10), std::out_of_range);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::is_valid")
+        {
+            SUBCASE("valid array")
+            {
+                sparrow::primitive_array<std::int32_t> flat_data({1, 2});
+                std::vector<std::size_t> offsets = {0, 2};
+                sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+                sparrow::primitive_array<std::int32_t> flat_shapes({2});
+                sparrow::fixed_sized_list_array tensor_shapes(1, sparrow::array(std::move(flat_shapes)));
+
+                metadata meta{std::nullopt, std::nullopt, std::nullopt};
+                
+                variable_shape_tensor_array tensor_array(
+                    1,
+                    sparrow::array(std::move(tensor_data)),
+                    sparrow::array(std::move(tensor_shapes)),
+                    meta
+                );
+
+                CHECK(tensor_array.is_valid());
+            }
+
+            SUBCASE("valid array with metadata")
+            {
+                sparrow::primitive_array<float> flat_data({1.0f, 2.0f, 3.0f});
+                std::vector<std::size_t> offsets = {0, 3};
+                sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+                sparrow::primitive_array<std::int32_t> flat_shapes({1, 3});
+                sparrow::fixed_sized_list_array tensor_shapes(2, sparrow::array(std::move(flat_shapes)));
+
+                metadata meta{
+                    std::vector<std::string>{"H", "W"},
+                    std::nullopt,
+                    std::nullopt
+                };
+                
+                variable_shape_tensor_array tensor_array(
+                    2,
+                    sparrow::array(std::move(tensor_data)),
+                    sparrow::array(std::move(tensor_shapes)),
+                    meta
+                );
+
+                CHECK(tensor_array.is_valid());
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::field_names")
+        {
+            CHECK_EQ(variable_shape_tensor_array::data_field_name(), "data");
+            CHECK_EQ(variable_shape_tensor_array::shape_field_name(), "shape");
+        }
+
+        TEST_CASE("variable_shape_tensor_array::iterators")
+        {
+            sparrow::primitive_array<std::int32_t> flat_data({1, 2, 3, 4, 5, 6});
+            std::vector<std::size_t> offsets = {0, 2, 4, 6};
+            sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+            sparrow::primitive_array<std::int32_t> flat_shapes({2, 2, 2});
+            sparrow::fixed_sized_list_array tensor_shapes(1, sparrow::array(std::move(flat_shapes)));
+
+            metadata meta{std::nullopt, std::nullopt, std::nullopt};
+            
+            variable_shape_tensor_array tensor_array(
+                1,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta
+            );
+
+            SUBCASE("begin and end")
+            {
+                auto it_begin = tensor_array.begin();
+                auto it_end = tensor_array.end();
+                CHECK(it_begin != it_end);
+            }
+
+            SUBCASE("cbegin and cend")
+            {
+                auto it_begin = tensor_array.cbegin();
+                auto it_end = tensor_array.cend();
+                CHECK(it_begin != it_end);
+            }
+
+            SUBCASE("range-based for loop")
+            {
+                size_t count = 0;
+                for (const auto& tensor : tensor_array)
+                {
+                    CHECK(tensor.has_value());
+                    ++count;
+                }
+                CHECK_EQ(count, 3);
+            }
+
+            SUBCASE("iterator distance")
+            {
+                auto distance = std::distance(tensor_array.begin(), tensor_array.end());
+                CHECK_EQ(static_cast<size_t>(distance), tensor_array.size());
+            }
+        }
     }
 }  // namespace sparrow_extensions

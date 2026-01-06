@@ -472,6 +472,32 @@ namespace sparrow_extensions
         return m_storage.raw_child(1);
     }
 
+    auto variable_shape_tensor_array::at(size_type i) const -> const_reference
+    {
+        if (i >= size())
+        {
+            throw std::out_of_range("variable_shape_tensor_array::at: index out of range");
+        }
+        return m_storage[i];
+    }
+
+    bool variable_shape_tensor_array::is_valid() const
+    {
+        // Check that we have exactly 2 children (data and shape)
+        if (m_storage.children_count() != 2)
+        {
+            return false;
+        }
+        
+        // Check that metadata is valid
+        if (!m_metadata.is_valid())
+        {
+            return false;
+        }
+        
+        return true;
+    }
+
 }  // namespace sparrow_extensions
 
 namespace sparrow::detail

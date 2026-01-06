@@ -378,6 +378,93 @@ namespace sparrow_extensions
             return m_storage.bitmap();
         }
 
+        /**
+         * @brief Checks if the array is empty.
+         *
+         * @return true if size() == 0, false otherwise
+         */
+        [[nodiscard]] bool empty() const
+        {
+            return size() == 0;
+        }
+
+        /**
+         * @brief Access tensor at index i with bounds checking.
+         *
+         * @param i Index of the tensor
+         * @return A struct_value representing the tensor at index i
+         *
+         * @throws std::out_of_range if i >= size()
+         */
+        [[nodiscard]] const_reference at(size_type i) const;
+
+        /**
+         * @brief Validates the internal structure of the tensor array.
+         *
+         * @return true if structure is valid (2 children, metadata valid), false otherwise
+         */
+        [[nodiscard]] bool is_valid() const;
+
+        /**
+         * @brief Returns the name of the data field.
+         *
+         * @return "data"
+         */
+        [[nodiscard]] static constexpr std::string_view data_field_name()
+        {
+            return "data";
+        }
+
+        /**
+         * @brief Returns the name of the shape field.
+         *
+         * @return "shape"
+         */
+        [[nodiscard]] static constexpr std::string_view shape_field_name()
+        {
+            return "shape";
+        }
+
+        /**
+         * @brief Returns iterator to the beginning of the tensor array.
+         *
+         * @return Iterator to the first tensor
+         */
+        [[nodiscard]] auto begin() const
+        {
+            return m_storage.begin();
+        }
+
+        /**
+         * @brief Returns iterator to the end of the tensor array.
+         *
+         * @return Iterator past the last tensor
+         */
+        [[nodiscard]] auto end() const
+        {
+            return m_storage.end();
+        }
+
+        /**
+         * @brief Returns const iterator to the beginning of the tensor array.
+         *
+         * @return Const iterator to the first tensor
+         */
+        [[nodiscard]] auto cbegin() const
+        {
+            return m_storage.cbegin();
+        }
+
+        /**
+         * @brief Returns const iterator to the end of the tensor array.
+         *
+         * @return Const iterator past the last tensor
+         */
+        [[nodiscard]] auto cend() const
+        {
+            return m_storage.cend();
+        }
+
     private:
 
         void validate_and_init(
