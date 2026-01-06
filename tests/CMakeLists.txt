@@ -37,6 +37,7 @@ set(SPARROW_EXTENSIONS_TESTS_SOURCES
     test_bool8_array.cpp
     test_json_array.cpp
     test_uuid_array.cpp
+    test_variable_shape_tensor.cpp
     metadata_sample.hpp
 )
 
