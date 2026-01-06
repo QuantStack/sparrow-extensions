@@ -375,8 +375,7 @@ namespace sparrow_extensions
         return m_storage;
     }
 
-    auto fixed_shape_tensor_array::operator[](size_type i) const
-        -> decltype(std::declval<const sparrow::fixed_sized_list_array&>()[i])
+    auto fixed_shape_tensor_array::operator[](size_type i) const -> const_reference
     {
         return m_storage[i];
     }
@@ -389,6 +388,50 @@ namespace sparrow_extensions
     auto fixed_shape_tensor_array::get_arrow_proxy() -> sparrow::arrow_proxy&
     {
         return sparrow::detail::array_access::get_arrow_proxy(m_storage);
+    }
+
+    bool fixed_shape_tensor_array::empty() const
+    {
+        return size() == 0;
+    }
+
+    auto fixed_shape_tensor_array::at(size_type i) const -> const_reference
+    {
+        if (i >= size())
+        {
+            throw std::out_of_range("fixed_shape_tensor_array::at: index out of range");
+        }
+        return m_storage[i];
+    }
+
+    bool fixed_shape_tensor_array::is_valid() const
+    {
+        return m_metadata.is_valid();
+    }
+
+    auto fixed_shape_tensor_array::begin() const -> const_iterator
+    {
+        return m_storage.begin();
+    }
+
+    auto fixed_shape_tensor_array::end() const-> const_iterator
+    {
+        return m_storage.end();
+    }
+
+    auto fixed_shape_tensor_array::cbegin() const -> const_iterator
+    {
+        return m_storage.cbegin();
+    }
+
+    auto fixed_shape_tensor_array::cend() const -> const_iterator
+    {
+        return m_storage.cend();
+    }
+
+    void fixed_shape_tensor_array::finalize_construction()
+    {
+        fixed_shape_tensor_extension::init(sparrow::detail::array_access::get_arrow_proxy(m_storage), m_metadata);
     }
 
 }  // namespace sparrow_extensions

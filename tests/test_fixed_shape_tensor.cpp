@@ -734,5 +734,277 @@ namespace sparrow_extensions
                     CHECK(proxy.name() == "test_array");
                 }
             }
+
+        TEST_CASE("fixed_shape_tensor_array::empty")
+        {
+            SUBCASE("empty array")
+            {
+                std::vector<float> flat_data;
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                CHECK(tensor_array.empty());
+                CHECK_EQ(tensor_array.size(), 0);
+            }
+
+            SUBCASE("non-empty array")
+            {
+                std::vector<float> flat_data(6);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                CHECK_FALSE(tensor_array.empty());
+                CHECK_EQ(tensor_array.size(), 1);
+            }
+        }
+
+        TEST_CASE("fixed_shape_tensor_array::at")
+        {
+            SUBCASE("valid access")
+            {
+                std::vector<float> flat_data(18);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                CHECK(tensor_array.at(0).has_value());
+                CHECK(tensor_array.at(1).has_value());
+                CHECK(tensor_array.at(2).has_value());
+            }
+
+            SUBCASE("out of range")
+            {
+                std::vector<float> flat_data(18);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                CHECK_THROWS_AS(tensor_array.at(3), std::out_of_range);
+                CHECK_THROWS_AS(tensor_array.at(10), std::out_of_range);
+            }
+        }
+
+        TEST_CASE("fixed_shape_tensor_array::is_valid")
+        {
+            SUBCASE("valid array")
+            {
+                std::vector<float> flat_data(6);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                CHECK(tensor_array.is_valid());
+            }
+
+            SUBCASE("valid with dim_names")
+            {
+                std::vector<float> flat_data(6);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::vector<std::string>{"rows", "cols"}, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                CHECK(tensor_array.is_valid());
+            }
+        }
+
+        TEST_CASE("fixed_shape_tensor_array::bitmap")
+        {
+            SUBCASE("all valid")
+            {
+                std::vector<float> flat_data(12);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                auto bitmap_range = tensor_array.bitmap();
+                size_t count = 0;
+                for (auto bit : bitmap_range)
+                {
+                    CHECK(bit);
+                    ++count;
+                }
+                CHECK_EQ(count, 2);
+            }
+
+            SUBCASE("with validity bitmap")
+            {
+                std::vector<float> flat_data(12);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                std::vector<bool> validity{true, false};
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta,
+                    validity
+                );
+
+                auto bitmap_range = tensor_array.bitmap();
+                auto it = bitmap_range.begin();
+                CHECK(*it);  // first element is valid
+                ++it;
+                CHECK_FALSE(*it);  // second element is invalid
+            }
+        }
+
+        TEST_CASE("fixed_shape_tensor_array::iterators")
+        {
+            SUBCASE("begin and end")
+            {
+                std::vector<float> flat_data(18);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                auto it_begin = tensor_array.begin();
+                auto it_end = tensor_array.end();
+
+                CHECK(it_begin != it_end);
+            }
+
+            SUBCASE("cbegin and cend")
+            {
+                std::vector<float> flat_data(18);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                auto it_begin = tensor_array.cbegin();
+                auto it_end = tensor_array.cend();
+
+                CHECK(it_begin != it_end);
+            }
+
+            SUBCASE("range-based for loop")
+            {
+                std::vector<float> flat_data(18);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                size_t count = 0;
+                for (const auto& tensor : tensor_array)
+                {
+                    CHECK(tensor.has_value());
+                    ++count;
+                }
+                CHECK_EQ(count, 3);
+            }
+
+            SUBCASE("iterator distance")
+            {
+                std::vector<float> flat_data(18);
+                std::iota(flat_data.begin(), flat_data.end(), 0.0f);
+
+                sparrow::primitive_array<float> values_array(flat_data);
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+
+                fixed_shape_tensor_array tensor_array(
+                    list_size,
+                    sparrow::array(std::move(values_array)),
+                    tensor_meta
+                );
+
+                auto distance = std::distance(tensor_array.begin(), tensor_array.end());
+                CHECK_EQ(static_cast<size_t>(distance), tensor_array.size());
+            }
+        }
     }
 }  // namespace sparrow_extensions

@@ -142,6 +142,18 @@ namespace sparrow_extensions
         using size_type = std::size_t;
         using metadata_type = fixed_shape_tensor_extension::metadata;
 
+        using inner_value_type = sparrow::fixed_sized_list_array::inner_value_type;
+        using inner_reference = sparrow::fixed_sized_list_array::inner_reference;
+        using inner_const_reference = sparrow::fixed_sized_list_array::inner_const_reference;
+
+        using bitmap_type = sparrow::fixed_sized_list_array::bitmap_type;
+        using bitmap_const_reference = sparrow::fixed_sized_list_array::bitmap_const_reference;
+
+        using value_type = sparrow::nullable<inner_value_type>;
+        using const_reference = sparrow::nullable<inner_const_reference, bitmap_const_reference>;
+
+        using const_iterator = sparrow::fixed_sized_list_array::const_iterator;
+
         /**
          * @brief Constructs a fixed shape tensor array from an arrow proxy.
          *
@@ -234,7 +246,9 @@ namespace sparrow_extensions
          * @pre validity_input size must match number of tensors (flat_values.size() / list_size)
          * @post Array contains tensors with the specified validity bitmap, name, and metadata
          */
-        template <sparrow::validity_bitmap_input VB, sparrow::input_metadata_container METADATA_RANGE = std::vector<sparrow::metadata_pair>>
+        template <
+            sparrow::validity_bitmap_input VB,
+            sparrow::input_metadata_container METADATA_RANGE = std::vector<sparrow::metadata_pair>>
         fixed_shape_tensor_array(
             std::uint64_t list_size,
             sparrow::array&& flat_values,
@@ -284,8 +298,7 @@ namespace sparrow_extensions
          *
          * @pre i < size()
          */
-        [[nodiscard]] auto operator[](size_type i) const
-            -> decltype(std::declval<const sparrow::fixed_sized_list_array&>()[i]);
+        [[nodiscard]] const_reference operator[](size_type i) const;
 
         /**
          * @brief Returns the underlying arrow_proxy.
@@ -297,7 +310,62 @@ namespace sparrow_extensions
          */
         [[nodiscard]] sparrow::arrow_proxy& get_arrow_proxy();
 
+        /**
+         * @brief Checks if the array is empty.
+         *
+         * @return true if size() == 0, false otherwise
+         */
+        [[nodiscard]] bool empty() const;
+
+        /**
+         * @brief Bounds-checked access to tensor at index i.
+         *
+         * @param i Index of the tensor
+         * @return A list_value representing the tensor at index i
+         * @throws std::out_of_range if i >= size()
+         */
+        [[nodiscard]] const_reference at(size_type i) const;
+
+        /**
+         * @brief Validates that the array structure is well-formed.
+         *
+         * @return true if metadata is valid, false otherwise
+         */
+        [[nodiscard]] bool is_valid() const;
+
+        /**
+         * @brief Returns the validity bitmap.
+         *
+         * @return Range representing the validity bitmap
+         */
+        [[nodiscard]] auto bitmap() const
+        {
+            return m_storage.bitmap();
+        }
+
+        /**
+         * @brief Returns iterator to the beginning.
+         */
+        [[nodiscard]] const_iterator begin() const;
+
+        /**
+         * @brief Returns iterator to the end.
+         */
+        [[nodiscard]] const_iterator end() const;
+
+        /**
+         * @brief Returns const iterator to the beginning.
+         */
+        [[nodiscard]] const_iterator cbegin() const;
+
+        /**
+         * @brief Returns const iterator to the end.
+         */
+        [[nodiscard]] const_iterator cend() const;
+
     private:
+
+        void finalize_construction();
 
         sparrow::fixed_sized_list_array m_storage;
         metadata_type m_metadata;
@@ -318,10 +386,7 @@ namespace sparrow_extensions
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
         SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
 
-        fixed_shape_tensor_extension::init(
-            sparrow::detail::array_access::get_arrow_proxy(m_storage),
-            m_metadata
-        );
+        finalize_construction();
     }
 
     template <sparrow::validity_bitmap_input VB, sparrow::input_metadata_container METADATA_RANGE>
@@ -341,19 +406,18 @@ namespace sparrow_extensions
 
         // Get the proxy and set name/metadata if provided
         auto& proxy = sparrow::detail::array_access::get_arrow_proxy(m_storage);
-        
+
         if (name.has_value())
         {
             proxy.set_name(*name);
         }
-        
+
         if (arrow_metadata.has_value())
         {
             proxy.set_metadata(std::make_optional(*arrow_metadata));
         }
 
-        // Add extension metadata
-        fixed_shape_tensor_extension::init(proxy, m_metadata);
+        finalize_construction();
     }
 
 }  // namespace sparrow_extensions
