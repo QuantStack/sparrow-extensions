@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 #include <doctest/doctest.h>
+
+#include "sparrow/array.hpp"
+#include "sparrow/list_array.hpp"
+#include "sparrow/primitive_array.hpp"
 
 #include "sparrow_extensions/variable_shape_tensor.hpp"
 
@@ -341,8 +346,274 @@ namespace sparrow_extensions
             }
         }
 
-        // Note: Full integration tests with array construction are pending due to
-        // compiler issues with complex list_array template instantiations.
-        // The metadata functionality is fully tested above.
+        TEST_CASE("variable_shape_tensor_array::child_accessors")
+        {
+            // Create simple 2D tensors with shape [2, 3] and [1, 4]
+            const std::uint64_t ndim = 2;
+            
+            // Create data arrays - List<Float32>
+            sparrow::primitive_array<float> flat_data_all({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f});
+            std::vector<std::size_t> offsets = {0, 6, 10};
+            
+            sparrow::primitive_array<float> values_copy(flat_data_all);
+            sparrow::list_array tensor_data(sparrow::array(std::move(values_copy)), std::move(offsets));
+
+            // Create shapes - FixedSizedList<Int32>[2]
+            sparrow::primitive_array<std::int32_t> flat_shapes({2, 3, 1, 4});
+            sparrow::fixed_sized_list_array tensor_shapes(
+                2,  // list_size = ndim
+                sparrow::array(std::move(flat_shapes))
+            );
+
+            metadata meta{std::nullopt, std::nullopt, std::nullopt};
+            
+            variable_shape_tensor_array tensor_array(
+                ndim,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta
+            );
+
+            SUBCASE("data_child const access")
+            {
+                const auto& const_array = tensor_array;
+                const auto* data_wrapper = const_array.data_child();
+                REQUIRE(data_wrapper != nullptr);
+            }
+
+            SUBCASE("data_child mutable access")
+            {
+                auto* data_wrapper = tensor_array.data_child();
+                REQUIRE(data_wrapper != nullptr);
+            }
+
+            SUBCASE("shape_child const access")
+            {
+                const auto& const_array = tensor_array;
+                const auto* shape_wrapper = const_array.shape_child();
+                REQUIRE(shape_wrapper != nullptr);
+            }
+
+            SUBCASE("shape_child mutable access")
+            {
+                auto* shape_wrapper = tensor_array.shape_child();
+                REQUIRE(shape_wrapper != nullptr);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::basic_operations")
+        {
+            // Create simple 1D tensors
+            const std::uint64_t ndim = 1;
+            
+            // Create data arrays - List<Int32> with 2 tensors
+            sparrow::primitive_array<std::int32_t> flat_data({1, 2, 3, 4, 5});
+            std::vector<std::size_t> offsets = {0, 3, 5};
+            sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+            // Create shapes - FixedSizedList<Int32>[1]
+            sparrow::primitive_array<std::int32_t> flat_shapes({3, 2});
+            sparrow::fixed_sized_list_array tensor_shapes(
+                1,  // list_size = ndim
+                sparrow::array(std::move(flat_shapes))
+            );
+
+            metadata meta{std::nullopt, std::nullopt, std::nullopt};
+            
+            variable_shape_tensor_array tensor_array(
+                ndim,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta
+            );
+
+            SUBCASE("size")
+            {
+                CHECK_EQ(tensor_array.size(), 2);
+            }
+
+            SUBCASE("ndim")
+            {
+                auto ndim_result = tensor_array.ndim();
+                CHECK_FALSE(ndim_result.has_value());  // metadata doesn't specify ndim
+            }
+
+            SUBCASE("get_metadata")
+            {
+                const auto& retrieved_meta = tensor_array.get_metadata();
+                CHECK_FALSE(retrieved_meta.dim_names.has_value());
+                CHECK_FALSE(retrieved_meta.permutation.has_value());
+                CHECK_FALSE(retrieved_meta.uniform_shape.has_value());
+            }
+
+            SUBCASE("storage access")
+            {
+                const auto& storage = tensor_array.storage();
+                CHECK_EQ(storage.size(), 2);
+                
+                auto& mutable_storage = tensor_array.storage();
+                CHECK_EQ(mutable_storage.size(), 2);
+            }
+
+            SUBCASE("get_arrow_proxy")
+            {
+                const auto& const_proxy = tensor_array.get_arrow_proxy();
+                CHECK_EQ(const_proxy.length(), 2);
+                
+                auto& mutable_proxy = tensor_array.get_arrow_proxy();
+                CHECK_EQ(mutable_proxy.length(), 2);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::with_metadata")
+        {
+            const std::uint64_t ndim = 3;
+            
+            // Create data arrays
+            sparrow::primitive_array<float> flat_data({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f});
+            std::vector<std::size_t> offsets = {0, 6};
+            sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+            // Create shapes
+            sparrow::primitive_array<std::int32_t> flat_shapes({2, 1, 3});
+            sparrow::fixed_sized_list_array tensor_shapes(
+                3,
+                sparrow::array(std::move(flat_shapes))
+            );
+
+            metadata meta{
+                std::vector<std::string>{"H", "W", "C"},
+                std::nullopt,
+                std::vector<std::optional<std::int32_t>>{std::nullopt, std::nullopt, 3}
+            };
+            
+            variable_shape_tensor_array tensor_array(
+                ndim,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta
+            );
+
+            SUBCASE("metadata preserved")
+            {
+                const auto& retrieved_meta = tensor_array.get_metadata();
+                REQUIRE(retrieved_meta.dim_names.has_value());
+                CHECK_EQ(retrieved_meta.dim_names->size(), 3);
+                CHECK_EQ((*retrieved_meta.dim_names)[0], "H");
+                CHECK_EQ((*retrieved_meta.dim_names)[1], "W");
+                CHECK_EQ((*retrieved_meta.dim_names)[2], "C");
+            }
+
+            SUBCASE("ndim from metadata")
+            {
+                auto ndim_result = tensor_array.ndim();
+                REQUIRE(ndim_result.has_value());
+                CHECK_EQ(*ndim_result, 3);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::with_validity_bitmap")
+        {
+            const std::uint64_t ndim = 1;
+            
+            // Create data arrays with 3 tensors
+            sparrow::primitive_array<std::int32_t> flat_data({1, 2, 3, 4, 5, 6});
+            std::vector<std::size_t> offsets = {0, 2, 4, 6};
+            sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+            // Create shapes
+            sparrow::primitive_array<std::int32_t> flat_shapes({2, 2, 2});
+            sparrow::fixed_sized_list_array tensor_shapes(
+                1,
+                sparrow::array(std::move(flat_shapes))
+            );
+
+            metadata meta{std::nullopt, std::nullopt, std::nullopt};
+            
+            // Create with validity bitmap - mark middle tensor as null
+            std::vector<bool> validity{true, false, true};
+            
+            variable_shape_tensor_array tensor_array(
+                ndim,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta,
+                std::move(validity)
+            );
+
+            SUBCASE("size with validity")
+            {
+                CHECK_EQ(tensor_array.size(), 3);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::with_name_and_arrow_metadata")
+        {
+            const std::uint64_t ndim = 2;
+            
+            // Create minimal tensor array
+            sparrow::primitive_array<std::int32_t> flat_data({1, 2});
+            std::vector<std::size_t> offsets = {0, 2};
+            sparrow::list_array tensor_data(sparrow::array(std::move(flat_data)), std::move(offsets));
+
+            sparrow::primitive_array<std::int32_t> flat_shapes({1, 2});
+            sparrow::fixed_sized_list_array tensor_shapes(
+                2,
+                sparrow::array(std::move(flat_shapes))
+            );
+
+            metadata meta{std::nullopt, std::nullopt, std::nullopt};
+            
+            std::vector<sparrow::metadata_pair> arrow_meta = {
+                {"custom_key", "custom_value"}
+            };
+            
+            variable_shape_tensor_array tensor_array(
+                ndim,
+                sparrow::array(std::move(tensor_data)),
+                sparrow::array(std::move(tensor_shapes)),
+                meta,
+                "my_tensor_array",
+                arrow_meta
+            );
+
+            SUBCASE("name preserved")
+            {
+                const auto& proxy = tensor_array.get_arrow_proxy();
+                CHECK_EQ(proxy.name(), "my_tensor_array");
+            }
+
+            SUBCASE("arrow metadata preserved")
+            {
+                const auto& proxy = tensor_array.get_arrow_proxy();
+                const auto metadata_opt = proxy.metadata();
+                REQUIRE(metadata_opt.has_value());
+                
+                // Should have extension metadata plus custom metadata
+                bool found_custom = false;
+                for (const auto& [key, value] : *metadata_opt)
+                {
+                    if (key == "custom_key" && value == "custom_value")
+                    {
+                        found_custom = true;
+                        break;
+                    }
+                }
+                CHECK(found_custom);
+            }
+        }
+
+        TEST_CASE("variable_shape_tensor_array::inner_typedefs")
+        {
+            // Verify that the inner typedefs are properly defined
+            using inner_val = variable_shape_tensor_array::inner_value_type;
+            using inner_ref = variable_shape_tensor_array::inner_reference;
+            using inner_const_ref = variable_shape_tensor_array::inner_const_reference;
+            
+            // These should all be sparrow::struct_value
+            CHECK(std::is_same_v<inner_val, sparrow::struct_value>);
+            CHECK(std::is_same_v<inner_ref, sparrow::struct_value>);
+            CHECK(std::is_same_v<inner_const_ref, sparrow::struct_value>);
+        }
     }
 }  // namespace sparrow_extensions

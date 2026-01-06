@@ -413,12 +413,6 @@ namespace sparrow_extensions
         return m_storage;
     }
 
-    auto variable_shape_tensor_array::operator[](size_type i) const
-        -> decltype(std::declval<const sparrow::struct_array&>()[i])
-    {
-        return m_storage[i];
-    }
-
     auto variable_shape_tensor_array::get_arrow_proxy() const -> const sparrow::arrow_proxy&
     {
         return sparrow::detail::array_access::get_arrow_proxy(m_storage);
@@ -456,6 +450,26 @@ namespace sparrow_extensions
         }
 
         variable_shape_tensor_extension::init(proxy, m_metadata);
+    }
+
+    const sparrow::array_wrapper* variable_shape_tensor_array::data_child() const
+    {
+        return m_storage.raw_child(0);
+    }
+
+    sparrow::array_wrapper* variable_shape_tensor_array::data_child()
+    {
+        return m_storage.raw_child(0);
+    }
+
+    const sparrow::array_wrapper* variable_shape_tensor_array::shape_child() const
+    {
+        return m_storage.raw_child(1);
+    }
+
+    sparrow::array_wrapper* variable_shape_tensor_array::shape_child()
+    {
+        return m_storage.raw_child(1);
     }
 
 }  // namespace sparrow_extensions

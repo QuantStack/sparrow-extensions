@@ -159,6 +159,17 @@ namespace sparrow_extensions
         using size_type = std::size_t;
         using metadata_type = variable_shape_tensor_extension::metadata;
 
+        // Typedefs inherited from struct_array
+        using inner_value_type = sparrow::struct_value;
+        using inner_reference = sparrow::struct_value;
+        using inner_const_reference = sparrow::struct_value;
+
+        using bitmap_type = sparrow::struct_array::bitmap_type;
+        using bitmap_const_reference = sparrow::struct_array::bitmap_const_reference;
+
+        using value_type = sparrow::nullable<inner_value_type>;
+        using const_reference = sparrow::nullable<inner_const_reference, bitmap_const_reference>;
+
         /**
          * @brief Constructs a variable shape tensor array from an arrow proxy.
          *
@@ -269,13 +280,6 @@ namespace sparrow_extensions
             std::optional<METADATA_RANGE> arrow_metadata = std::nullopt
         );
 
-        // Default special members
-        variable_shape_tensor_array(const variable_shape_tensor_array&) = default;
-        variable_shape_tensor_array& operator=(const variable_shape_tensor_array&) = default;
-        variable_shape_tensor_array(variable_shape_tensor_array&&) noexcept = default;
-        variable_shape_tensor_array& operator=(variable_shape_tensor_array&&) noexcept = default;
-        ~variable_shape_tensor_array() = default;
-
         /**
          * @brief Returns the number of tensors in the array.
          */
@@ -311,8 +315,10 @@ namespace sparrow_extensions
          *
          * @pre i < size()
          */
-        [[nodiscard]] auto operator[](size_type i) const
-            -> decltype(std::declval<const sparrow::struct_array&>()[i]);
+        [[nodiscard]] const_reference operator[](size_type i) const
+        {
+            return m_storage[i];
+        }
 
         /**
          * @brief Returns the underlying arrow_proxy.
@@ -323,6 +329,54 @@ namespace sparrow_extensions
          * @brief Returns the underlying arrow_proxy.
          */
         [[nodiscard]] sparrow::arrow_proxy& get_arrow_proxy();
+
+        /**
+         * @brief Gets const pointer to the data child array.
+         *
+         * @return Const pointer to the data array wrapper (index 0)
+         */
+        [[nodiscard]] const sparrow::array_wrapper* data_child() const;
+
+        /**
+         * @brief Gets mutable pointer to the data child array.
+         *
+         * @return Pointer to the data array wrapper (index 0)
+         */
+        [[nodiscard]] sparrow::array_wrapper* data_child();
+
+        /**
+         * @brief Gets const pointer to the shape child array.
+         *
+         * @return Const pointer to the shape array wrapper (index 1)
+         */
+        [[nodiscard]] const sparrow::array_wrapper* shape_child() const;
+
+        /**
+         * @brief Gets mutable pointer to the shape child array.
+         *
+         * @return Pointer to the shape array wrapper (index 1)
+         */
+        [[nodiscard]] sparrow::array_wrapper* shape_child();
+
+        /**
+         * @brief Gets the names of all child arrays.
+         *
+         * @return Range of child array names
+         */
+        [[nodiscard]] auto names() const
+        {
+            return m_storage.names();
+        }
+
+        /**
+         * @brief Gets the const bitmap range for iteration.
+         *
+         * @return Const bitmap range
+         */
+        [[nodiscard]] auto bitmap() const
+        {
+            return m_storage.bitmap();
+        }
 
     private:
 
